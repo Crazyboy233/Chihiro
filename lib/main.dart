@@ -6,11 +6,14 @@ import 'constants/colors.dart';
 import 'constants/routes.dart';
 import 'providers/category_provider.dart';
 import 'providers/transaction_provider.dart';
+import 'providers/schedule_provider.dart';
+import 'providers/habit_provider.dart';
 import 'services/database_service.dart';
 import 'utils/db_helper.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/statistics/statistics_screen.dart';
 import 'screens/category/category_list_screen.dart';
+import 'screens/schedule/schedule_screen.dart';
 
 void main() {
   if (defaultTargetPlatform == TargetPlatform.windows || 
@@ -31,6 +34,8 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
+        ChangeNotifierProvider(create: (_) => ScheduleProvider()),
+        ChangeNotifierProvider(create: (_) => HabitProvider()),
       ],
       child: MaterialApp(
         title: '千寻',
@@ -82,14 +87,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const StatisticsScreen(),
-    const Scaffold(
-      body: Center(
-        child: Text(
-          '日程功能开发中...',
-          style: TextStyle(fontSize: 18, color: AppColors.textSecondary),
-        ),
-      ),
-    ),
+    const ScheduleScreen(),
     const Scaffold(
       body: Center(
         child: Text(

@@ -54,8 +54,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
           return CustomScrollView(
             slivers: [
-              SliverAppBar(
-            title: const Text('日程'),
+            const SliverAppBar(
+            title: Text('日程'),
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             pinned: true,
@@ -83,10 +83,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ),
               ),
               if (todayHabits.isNotEmpty) ...[
-                SliverToBoxAdapter(
+                const SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: const Text(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
                       '今日打卡',
                       style: TextStyle(
                         fontSize: 16,
@@ -112,10 +112,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   ),
                 ),
               ],
-              SliverToBoxAdapter(
+              const SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const Text(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
                     '今日日程',
                     style: TextStyle(
                       fontSize: 16,
@@ -126,11 +126,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ),
               ),
               if (todaySchedules.isEmpty)
-                SliverToBoxAdapter(
+                const SliverToBoxAdapter(
                   child: Card(
                     color: AppColors.surface,
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: const Padding(
+                    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Padding(
                       padding: EdgeInsets.all(24),
                       child: Center(
                         child: Column(
@@ -398,7 +398,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         subtitle: goal.description != null
             ? Text(
                 goal.description!,
-                style: TextStyle(color: AppColors.textSecondary),
+                style: const TextStyle(color: AppColors.textSecondary),
               )
             : null,
         trailing: IconButton(
@@ -463,12 +463,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           children: [
             Text(
               _formatTime(schedule.startTime),
-              style: TextStyle(color: AppColors.textSecondary),
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
             if (schedule.description != null)
               Text(
                 schedule.description!,
-                style: TextStyle(color: AppColors.textSecondary),
+                style: const TextStyle(color: AppColors.textSecondary),
               ),
           ],
         ),

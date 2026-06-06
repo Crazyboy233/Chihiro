@@ -5,7 +5,7 @@ import '../services/database_service.dart';
 
 class HabitProvider with ChangeNotifier {
   List<HabitGoal> _goals = [];
-  Map<int, List<HabitRecord>> _records = {};
+  final Map<int, List<HabitRecord>> _records = {};
   bool _isLoading = false;
 
   List<HabitGoal> get goals => _goals;

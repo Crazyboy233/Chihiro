@@ -146,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ...transactions.map((transaction) {
           final category = categoryProvider.getCategoryById(transaction.categoryId);
           return _buildTransactionItem(transaction, category, transactionProvider);
-        }).toList(),
+        }),
         const SizedBox(height: 4),
       ],
     );
@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [AppColors.primary, AppColors.primaryDark],
         ),
         borderRadius: BorderRadius.circular(16),
@@ -190,8 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.arrow_downward, color: AppColors.income, size: 16),
-                        SizedBox(width: 4),
+                        const Icon(Icons.arrow_downward, color: AppColors.income, size: 16),
+                        const SizedBox(width: 4),
                         Text(
                           '收入',
                           style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
@@ -217,8 +217,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Icon(Icons.arrow_upward, color: AppColors.expense, size: 16),
-                        SizedBox(width: 4),
+                        const Icon(Icons.arrow_upward, color: AppColors.expense, size: 16),
+                        const SizedBox(width: 4),
                         Text(
                           '支出',
                           style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),

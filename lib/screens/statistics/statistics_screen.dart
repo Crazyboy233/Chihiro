@@ -447,7 +447,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       const SizedBox(height: 4),
                       Text(
                         '$percentageStr%',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                         ),

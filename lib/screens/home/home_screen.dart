@@ -1,8 +1,6 @@
-import 'package:flutter/material.dart' hide Category;
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
-import '../../constants/icons.dart';
-import '../../models/category.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../utils/date_utils.dart' as qx;
@@ -374,7 +372,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTransactionItem(dynamic transaction, dynamic category, TransactionProvider transactionProvider) {
-    final isIncome = transaction.type == 'income';
     return _SlidableTransactionItem(
       key: ValueKey('transaction_${transaction.id}'),
       transaction: transaction,

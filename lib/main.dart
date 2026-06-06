@@ -8,7 +8,6 @@ import 'providers/category_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/schedule_provider.dart';
 import 'providers/habit_provider.dart';
-import 'services/database_service.dart';
 import 'utils/db_helper.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/statistics/statistics_screen.dart';
@@ -102,8 +101,6 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     Future.microtask(() async {
-      // 先初始化数据库，现在 DBHelper 会自动确保有默认分类
-      final db = await DBHelper.instance.database;
       debugPrint('Database initialized');
       
       if (!mounted) return;

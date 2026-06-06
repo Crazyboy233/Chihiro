@@ -1,7 +1,6 @@
-import 'package:flutter/material.dart' hide Category;
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
-import '../../models/category.dart';
 import '../../models/transaction.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/transaction_provider.dart';

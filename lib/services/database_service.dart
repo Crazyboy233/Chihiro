@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart' hide Category;
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../models/schedule.dart';
-import '../models/schedule_category.dart';
 import '../models/habit_goal.dart';
 import '../models/habit_record.dart';
 import '../utils/db_helper.dart';

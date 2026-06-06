@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide Category;
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
 import '../../models/category.dart';
@@ -18,7 +18,6 @@ class StatisticsScreen extends StatefulWidget {
 class _StatisticsScreenState extends State<StatisticsScreen> {
   String _type = 'expense';
   String _dateRangeType = 'month';
-  DateTimeRange? _tempCustomDateRange;
 
   @override
   void initState() {

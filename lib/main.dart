@@ -8,7 +8,6 @@ import 'providers/category_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/schedule_provider.dart';
 import 'providers/habit_provider.dart';
-import 'utils/db_helper.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/statistics/statistics_screen.dart';
 import 'screens/category/category_list_screen.dart';

@@ -17,7 +17,6 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
   String _type = 'expense';
-  String _dateRangeType = 'month';
 
   @override
   void initState() {
@@ -165,9 +164,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _dateRangeType = 'week';
-                    });
                     provider.setDateRangeType('week');
                   },
                   child: Container(
@@ -191,9 +187,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _dateRangeType = 'month';
-                    });
                     provider.setDateRangeType('month');
                   },
                   child: Container(
@@ -217,9 +210,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _dateRangeType = 'year';
-                    });
                     provider.setDateRangeType('year');
                   },
                   child: Container(
@@ -243,9 +233,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () async {
-                    setState(() {
-                      _dateRangeType = 'custom';
-                    });
                     await _showCustomDateRangePicker(provider);
                   },
                   child: Container(
@@ -325,9 +312,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     
     if (picked != null && mounted) {
       provider.setCustomDateRange(picked.start, picked.end);
-      setState(() {
-        _dateRangeType = 'custom';
-      });
     }
   }
 

@@ -386,6 +386,15 @@ class _HomeScreenState extends State<HomeScreen> {
           transactionProvider.deleteTransaction(transaction.id!);
         }
       },
+      onEdit: () {
+        _setActiveSlidable(null);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddTransactionScreen(transaction: transaction),
+          ),
+        );
+      },
     );
   }
 
@@ -473,6 +482,7 @@ class _SlidableTransactionItem extends StatefulWidget {
   final bool isActive;
   final ValueChanged<bool> onSlidStateChange;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   const _SlidableTransactionItem({
     super.key,
@@ -481,6 +491,7 @@ class _SlidableTransactionItem extends StatefulWidget {
     required this.isActive,
     required this.onSlidStateChange,
     required this.onDelete,
+    required this.onEdit,
   });
 
   @override
@@ -569,7 +580,11 @@ class _SlidableTransactionItemState extends State<_SlidableTransactionItem> with
     final isIncome = widget.transaction.type == 'income';
     return GestureDetector(
       onTap: () {
-        _closeSlide();
+        if (_isSlid) {
+          _closeSlide();
+        } else {
+          widget.onEdit();
+        }
       },
       onHorizontalDragEnd: (details) {
         if (details.primaryVelocity != null) {
@@ -585,35 +600,73 @@ class _SlidableTransactionItemState extends State<_SlidableTransactionItem> with
         child: Stack(
           children: [
             Positioned.fill(
-              child: GestureDetector(
-                onTap: () {
-                  if (_isSlid) {
-                    widget.onDelete();
-                  }
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: EdgeInsets.only(right: 20),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.delete, color: Colors.white, size: 28),
-                          SizedBox(height: 4),
-                          Text(
-                            '删除',
-                            style: TextStyle(color: Colors.white, fontSize: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_isSlid) {
+                          widget.onEdit();
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: EdgeInsets.only(left: 20),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.edit, color: Colors.white, size: 28),
+                                SizedBox(height: 4),
+                                Text(
+                                  '编辑',
+                                  style: TextStyle(color: Colors.white, fontSize: 12),
+                                ),
+                              ],
+                            ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_isSlid) {
+                          widget.onDelete();
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: EdgeInsets.only(right: 20),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.delete, color: Colors.white, size: 28),
+                                SizedBox(height: 4),
+                                Text(
+                                  '删除',
+                                  style: TextStyle(color: Colors.white, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             SlideTransition(

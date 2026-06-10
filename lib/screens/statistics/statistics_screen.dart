@@ -324,7 +324,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         gradient: LinearGradient(
           colors: _type == 'income'
               ? [AppColors.income, const Color(0xFF0DA268)]
-              : [AppColors.expense, const Color(0xFFD32F2F)],
+              : [AppColors.expense, const Color(0xFFEA580C)],
         ),
         borderRadius: BorderRadius.circular(16),
       ),

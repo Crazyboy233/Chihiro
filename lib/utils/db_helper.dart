@@ -7,6 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class DBHelper {
   static final DBHelper instance = DBHelper._init();
   static Database? _database;
+  static bool _isFfiInitialized = false;
 
   DBHelper._init();
 
@@ -47,42 +48,40 @@ class DBHelper {
     final dbPath = await getApplicationDocumentsDirectory();
     final path = join(dbPath.path, filePath);
 
-    debugPrint('=== DBHelper._initDB ===');
-    debugPrint('Platform: ${defaultTargetPlatform}');
-    debugPrint('Application documents directory: ${dbPath.path}');
-    debugPrint('Full database path: $path');
-
-    if (defaultTargetPlatform == TargetPlatform.windows || 
+    // 只初始化一次 FFI
+    if (!_isFfiInitialized && 
+        (defaultTargetPlatform == TargetPlatform.windows || 
         defaultTargetPlatform == TargetPlatform.linux || 
-        defaultTargetPlatform == TargetPlatform.macOS) {
+        defaultTargetPlatform == TargetPlatform.macOS)) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
+      _isFfiInitialized = true;
     }
 
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
       onOpen: _onOpenDB,
     );
   }
 
   Future<void> _onOpenDB(Database db) async {
-    debugPrint('=== DBHelper._onOpenDB called ===');
-    final count = Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM categories'),
-        ) ??
-        0;
-    debugPrint('Database opened, current categories count: $count');
-    debugPrint('Expense categories: ${Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM categories WHERE type = ?", ['expense']))}');
-    debugPrint('Income categories: ${Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM categories WHERE type = ?", ['income']))}');
-
     await ensureDefaultCategories(db);
   }
 
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      try {
+        await db.execute('ALTER TABLE schedules ADD COLUMN color TEXT');
+      } catch (e) {
+        // 列已存在，忽略错误
+      }
+    }
+  }
+
   Future<void> _createDB(Database db, int version) async {
-    debugPrint('=== DBHelper._createDB called (version: $version) ===');
-    debugPrint('Creating database tables...');
 
     await db.execute('''
       CREATE TABLE categories (
@@ -131,6 +130,7 @@ class DBHelper {
         category_id INTEGER,
         is_all_day INTEGER DEFAULT 0,
         calendar_event_id TEXT,
+        color TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (category_id) REFERENCES schedule_categories (id)
@@ -166,18 +166,10 @@ class DBHelper {
       )
     ''');
 
-    debugPrint('Inserting default categories...');
     await insertDefaultCategories(db);
-
-    final count = Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM categories'),
-        ) ??
-        0;
-    debugPrint('Inserted $count categories');
   }
 
   Future<void> ensureDefaultCategories(Database db) async {
-    debugPrint('=== DBHelper.ensureDefaultCategories called ===');
     final expenseCount = Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM categories WHERE type = ?', ['expense']),
         ) ??
@@ -187,26 +179,11 @@ class DBHelper {
         ) ??
         0;
 
-    debugPrint('Current expense categories count: $expenseCount');
-    debugPrint('Current income categories count: $incomeCount');
-
     if (expenseCount == 0) {
-      debugPrint('No expense categories found, inserting defaults...');
       await insertDefaultCategories(db, type: 'expense');
-      final afterExpense = Sqflite.firstIntValue(
-            await db.rawQuery('SELECT COUNT(*) FROM categories WHERE type = ?', ['expense']),
-          ) ??
-          0;
-      debugPrint('After insertion, expense categories count: $afterExpense');
     }
     if (incomeCount == 0) {
-      debugPrint('No income categories found, inserting defaults...');
       await insertDefaultCategories(db, type: 'income');
-      final afterIncome = Sqflite.firstIntValue(
-            await db.rawQuery('SELECT COUNT(*) FROM categories WHERE type = ?', ['income']),
-          ) ??
-          0;
-      debugPrint('After insertion, income categories count: $afterIncome');
     }
   }
 

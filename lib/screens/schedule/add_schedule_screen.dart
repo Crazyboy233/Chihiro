@@ -22,12 +22,33 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   bool _isAllDay = false;
+  String? _selectedColor;
+
+  final List<String> _availableColors = [
+    '#EF4444',
+    '#F97316',
+    '#F59E0B',
+    '#EAB308',
+    '#84CC16',
+    '#10B981',
+    '#14B8A6',
+    '#06B6D4',
+    '#0EA5E9',
+    '#3B82F6',
+    '#6366F1',
+    '#8B5CF6',
+    '#A855F7',
+    '#D946EF',
+    '#EC4899',
+    '#F43F5E',
+  ];
 
   @override
   void initState() {
     super.initState();
     _selectedDate = widget.selectedDate ?? DateTime.now();
     _startTime = const TimeOfDay(hour: 9, minute: 0);
+    _selectedColor = _availableColors[0];
   }
 
   @override
@@ -65,6 +86,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       startTime: startDateTime.toIso8601String(),
       endTime: endDateTime?.toIso8601String(),
       isAllDay: _isAllDay ? 1 : 0,
+      color: _selectedColor,
       createdAt: now.toIso8601String(),
       updatedAt: now.toIso8601String(),
     );
@@ -118,6 +140,59 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                 filled: true,
                 border: OutlineInputBorder(),
               ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '选择颜色',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _availableColors.map((color) {
+                final isSelected = _selectedColor == color;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedColor = color;
+                    });
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Color(int.parse('0xFF${color.replaceFirst('#', '')}')),
+                      shape: BoxShape.circle,
+                      border: isSelected
+                          ? Border.all(
+                              color: Colors.black,
+                              width: 3,
+                            )
+                          : null,
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: isSelected
+                        ? const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 24,
+                          )
+                        : null,
+                  ),
+                );
+              }).toList(),
             ),
             const SizedBox(height: 16),
             ListTile(

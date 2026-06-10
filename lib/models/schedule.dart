@@ -8,6 +8,7 @@ class Schedule {
   int? categoryId;
   int isAllDay;
   String? calendarEventId;
+  String? color;
   String createdAt;
   String updatedAt;
 
@@ -21,6 +22,7 @@ class Schedule {
     this.categoryId,
     this.isAllDay = 0,
     this.calendarEventId,
+    this.color,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -36,6 +38,7 @@ class Schedule {
       'category_id': categoryId,
       'is_all_day': isAllDay,
       'calendar_event_id': calendarEventId,
+      'color': color,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };
@@ -52,6 +55,7 @@ class Schedule {
       categoryId: map['category_id'],
       isAllDay: map['is_all_day'] ?? 0,
       calendarEventId: map['calendar_event_id'],
+      color: map['color'],
       createdAt: map['created_at'],
       updatedAt: map['updated_at'],
     );

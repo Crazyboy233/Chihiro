@@ -8,7 +8,7 @@ class AppColors {
   static const Color secondary = Color(0xFF10B981);
   static const Color secondaryLight = Color(0xFF34D399);
   
-  static const Color expense = Color(0xFFEF4444);
+  static const Color expense = Color(0xFFF97316);
   static const Color income = Color(0xFF10B981);
   
   static const Color background = Color(0xFFF9FAFB);

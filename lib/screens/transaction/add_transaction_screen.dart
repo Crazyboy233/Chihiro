@@ -7,31 +7,46 @@ import '../../providers/transaction_provider.dart';
 import '../../utils/date_utils.dart' as qx;
 
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key});
+  final Transaction? transaction;
+
+  const AddTransactionScreen({super.key, this.transaction});
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
 }
 
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
-  String _type = 'expense';
+  late String _type;
   int? _selectedCategoryId;
   final _amountController = TextEditingController();
   final _categoryNoteController = TextEditingController();
   final _noteController = TextEditingController();
-  DateTime _selectedDate = qx.DateUtils.getBeijingTime();
+  late DateTime _selectedDate;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      final categories = context.read<CategoryProvider>().expenseCategories;
-      if (categories.isNotEmpty) {
-        setState(() {
-          _selectedCategoryId = categories.first.id;
-        });
-      }
-    });
+    if (widget.transaction != null) {
+      // 编辑模式：初始化现有数据
+      _type = widget.transaction!.type;
+      _amountController.text = widget.transaction!.amount.toString();
+      _categoryNoteController.text = widget.transaction!.categoryNote ?? '';
+      _noteController.text = widget.transaction!.note ?? '';
+      _selectedDate = DateTime.parse(widget.transaction!.date);
+      _selectedCategoryId = widget.transaction!.categoryId;
+    } else {
+      // 新增模式
+      _type = 'expense';
+      _selectedDate = qx.DateUtils.getBeijingTime();
+      Future.microtask(() {
+        final categories = context.read<CategoryProvider>().expenseCategories;
+        if (categories.isNotEmpty) {
+          setState(() {
+            _selectedCategoryId = categories.first.id;
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -47,7 +62,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('记一笔'),
+        title: Text(widget.transaction != null ? '编辑账单' : '记一笔'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -339,18 +354,33 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       return;
     }
 
-    final transaction = Transaction(
-      type: _type,
-      categoryId: _selectedCategoryId!,
-      amount: amount,
-      date: _selectedDate.toIso8601String().split('T').first,
-      categoryNote: _categoryNoteController.text,
-      note: _noteController.text,
-      createdAt: qx.DateUtils.getCurrentTimestamp(),
-      updatedAt: qx.DateUtils.getCurrentTimestamp(),
-    );
+    if (widget.transaction != null) {
+      // 编辑模式
+      final updatedTransaction = widget.transaction!.copyWith(
+        type: _type,
+        categoryId: _selectedCategoryId!,
+        amount: amount,
+        date: _selectedDate.toIso8601String().split('T').first,
+        categoryNote: _categoryNoteController.text,
+        note: _noteController.text,
+        updatedAt: qx.DateUtils.getCurrentTimestamp(),
+      );
+      await context.read<TransactionProvider>().updateTransaction(updatedTransaction);
+    } else {
+      // 新增模式
+      final transaction = Transaction(
+        type: _type,
+        categoryId: _selectedCategoryId!,
+        amount: amount,
+        date: _selectedDate.toIso8601String().split('T').first,
+        categoryNote: _categoryNoteController.text,
+        note: _noteController.text,
+        createdAt: qx.DateUtils.getCurrentTimestamp(),
+        updatedAt: qx.DateUtils.getCurrentTimestamp(),
+      );
+      await context.read<TransactionProvider>().addTransaction(transaction);
+    }
 
-    await context.read<TransactionProvider>().addTransaction(transaction);
     if (mounted) {
       Navigator.pop(context);
     }

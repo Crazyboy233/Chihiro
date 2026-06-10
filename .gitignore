@@ -44,3 +44,10 @@ app.*.map.json
 /android/app/release
 
 build/
+.idea/
+ios/
+web/
+macos/
+linux/
+
+.vscode/

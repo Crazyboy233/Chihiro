@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'constants/colors.dart';
 import 'constants/routes.dart';
 import 'providers/category_provider.dart';
@@ -14,12 +12,6 @@ import 'screens/category/category_list_screen.dart';
 import 'screens/schedule/schedule_screen.dart';
 
 void main() {
-  if (defaultTargetPlatform == TargetPlatform.windows || 
-      defaultTargetPlatform == TargetPlatform.linux || 
-      defaultTargetPlatform == TargetPlatform.macOS) {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  }
   runApp(const MyApp());
 }
 
@@ -100,8 +92,6 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     Future.microtask(() async {
-      debugPrint('Database initialized');
-      
       if (!mounted) return;
       context.read<CategoryProvider>().loadCategories();
       context.read<TransactionProvider>().loadTransactions();

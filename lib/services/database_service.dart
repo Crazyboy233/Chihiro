@@ -154,7 +154,6 @@ class DatabaseService {
       whereArgs: [type],
       orderBy: 'sort_order ASC, name ASC',
     );
-    debugPrint('Querying categories for type: $type, found ${maps.length}');
     return List.generate(maps.length, (i) => Category.fromMap(maps[i]));
   }
 
@@ -170,10 +169,8 @@ class DatabaseService {
   Future<void> initializeDefaultCategories() async {
     final db = await DBHelper.instance.database;
     final existingCategories = await db.query('categories');
-    debugPrint('Existing categories count: ${existingCategories.length}');
     
     if (existingCategories.isEmpty) {
-      debugPrint('No existing categories, inserting defaults...');
       
       final defaultCategories = [
         {'name': '餐饮', 'type': 'expense', 'icon': '🍔', 'color': '#EF4444', 'is_default': 1, 'sort_order': 1},
@@ -205,9 +202,6 @@ class DatabaseService {
       for (var category in defaultCategories) {
         await db.insert('categories', category);
       }
-      
-      final afterInsert = await db.query('categories');
-      debugPrint('After insertion, categories count: ${afterInsert.length}');
     }
   }
 
@@ -302,5 +296,15 @@ class DatabaseService {
       orderBy: 'date ASC',
     );
     return List.generate(maps.length, (i) => HabitRecord.fromMap(maps[i]));
+  }
+
+  Future<int> updateHabitRecord(HabitRecord record) async {
+    final db = await DBHelper.instance.database;
+    return await db.update(
+      'habit_records',
+      record.toMap(),
+      where: 'id = ?',
+      whereArgs: [record.id],
+    );
   }
 }

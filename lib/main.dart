@@ -42,7 +42,7 @@ class MyApp extends StatelessWidget {
             unselectedItemColor: AppColors.textSecondary,
             type: BottomNavigationBarType.fixed,
           ),
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             color: AppColors.surface,
             elevation: 0,
             shape: RoundedRectangleBorder(

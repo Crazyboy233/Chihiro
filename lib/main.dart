@@ -10,6 +10,7 @@ import 'screens/home/home_screen.dart';
 import 'screens/statistics/statistics_screen.dart';
 import 'screens/category/category_list_screen.dart';
 import 'screens/schedule/schedule_screen.dart';
+import 'screens/schedule/habit_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -78,6 +79,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const StatisticsScreen(),
     const ScheduleScreen(),
+    const HabitScreen(),
     const Scaffold(
       body: Center(
         child: Text(
@@ -128,6 +130,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.calendar_today_outlined),
             activeIcon: Icon(Icons.calendar_today),
             label: '日程',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check_circle_outline),
+            activeIcon: Icon(Icons.check_circle),
+            label: '打卡',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),

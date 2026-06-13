@@ -31,11 +31,13 @@ class DBHelper {
     {'name': '数码', 'type': 'expense', 'icon': '💻', 'color': '#14B8A6', 'is_default': 1, 'sort_order': 17},
     {'name': '学习', 'type': 'expense', 'icon': '📚', 'color': '#EAB308', 'is_default': 1, 'sort_order': 18},
     {'name': 'AI', 'type': 'expense', 'icon': '🤖', 'color': '#EC4899', 'is_default': 1, 'sort_order': 19},
+    {'name': '其他', 'type': 'expense', 'icon': '📦', 'color': '#64748B', 'is_default': 1, 'sort_order': 20},
     {'name': '工资', 'type': 'income', 'icon': '💰', 'color': '#10B981', 'is_default': 1, 'sort_order': 1},
     {'name': '奖金', 'type': 'income', 'icon': '🎁', 'color': '#F59E0B', 'is_default': 1, 'sort_order': 2},
     {'name': '理财', 'type': 'income', 'icon': '📈', 'color': '#3B82F6', 'is_default': 1, 'sort_order': 3},
     {'name': '兼职', 'type': 'income', 'icon': '💼', 'color': '#8B5CF6', 'is_default': 1, 'sort_order': 4},
-    {'name': '其他', 'type': 'income', 'icon': '📦', 'color': '#64748B', 'is_default': 1, 'sort_order': 5},
+    {'name': '补助', 'type': 'income', 'icon': '🎗️', 'color': '#06B6D4', 'is_default': 1, 'sort_order': 5},
+    {'name': '补偿', 'type': 'income', 'icon': '💵', 'color': '#84CC16', 'is_default': 1, 'sort_order': 6},
   ];
 
   Future<Database> get database async {
@@ -60,7 +62,7 @@ class DBHelper {
 
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
       onOpen: _onOpenDB,
@@ -68,6 +70,16 @@ class DBHelper {
   }
 
   Future<void> _onOpenDB(Database db) async {
+    // 确保 habit_goals 表有 custom_interval_days 列（兜底处理：如果 onUpgrade 未执行或被缓存的旧连接掩盖）
+    try {
+      final columns = await db.rawQuery("PRAGMA table_info(habit_goals)");
+      final hasColumn = columns.any((c) => c['name'].toString() == 'custom_interval_days');
+      if (!hasColumn) {
+        await db.execute('ALTER TABLE habit_goals ADD COLUMN custom_interval_days INTEGER');
+      }
+    } catch (_) {
+      // 表不存在或列已存在，忽略
+    }
     await ensureDefaultCategories(db);
   }
 
@@ -75,6 +87,13 @@ class DBHelper {
     if (oldVersion < 2) {
       try {
         await db.execute('ALTER TABLE schedules ADD COLUMN color TEXT');
+      } catch (e) {
+        // 列已存在，忽略错误
+      }
+    }
+    if (oldVersion < 3) {
+      try {
+        await db.execute('ALTER TABLE habit_goals ADD COLUMN custom_interval_days INTEGER');
       } catch (e) {
         // 列已存在，忽略错误
       }
@@ -146,6 +165,7 @@ class DBHelper {
         color TEXT NOT NULL,
         frequency TEXT NOT NULL,
         target_days TEXT,
+        custom_interval_days INTEGER,
         start_date TEXT NOT NULL,
         end_date TEXT,
         is_active INTEGER DEFAULT 1,
@@ -179,11 +199,37 @@ class DBHelper {
         ) ??
         0;
 
+    // 清理历史错误数据：旧版本曾把「补助/补偿」作为支出分类，现改为收入分类
+    await db.delete(
+      'categories',
+      where: 'name IN (?, ?) AND type = ?',
+      whereArgs: ['补助', '补偿', 'expense'],
+    );
+
+    // 完全空表 → 批量插入
     if (expenseCount == 0) {
       await insertDefaultCategories(db, type: 'expense');
     }
     if (incomeCount == 0) {
       await insertDefaultCategories(db, type: 'income');
+    }
+
+    // 已有数据 → 逐个检查缺失的分类并插入（用于后续新增默认分类时的兼容）
+    if (expenseCount > 0 || incomeCount > 0) {
+      for (final category in defaultCategories) {
+        final name = category['name'] as String;
+        final type = category['type'] as String;
+        final existing = Sqflite.firstIntValue(
+              await db.rawQuery(
+                'SELECT COUNT(*) FROM categories WHERE name = ? AND type = ?',
+                [name, type],
+              ),
+            ) ??
+            0;
+        if (existing == 0) {
+          await db.insert('categories', category);
+        }
+      }
     }
   }
 

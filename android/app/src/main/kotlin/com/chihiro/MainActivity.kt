@@ -1,4 +1,4 @@
-package com.qianxun.temp_qianxun
+package com.chihiro
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'constants/colors.dart';
 import 'constants/routes.dart';
@@ -8,9 +9,10 @@ import 'providers/schedule_provider.dart';
 import 'providers/habit_provider.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/statistics/statistics_screen.dart';
-import 'screens/category/category_list_screen.dart';
 import 'screens/schedule/schedule_screen.dart';
 import 'screens/schedule/habit_screen.dart';
+import 'screens/settings/settings_screen.dart';
+import 'screens/category/category_list_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,6 +32,16 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: '千寻',
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('zh', 'CN'),
+          Locale('en', 'US'),
+        ],
+        locale: const Locale('zh', 'CN'),
         theme: ThemeData(
           primarySwatch: Colors.indigo,
           scaffoldBackgroundColor: AppColors.background,
@@ -58,8 +70,8 @@ class MyApp extends StatelessWidget {
         initialRoute: AppRoutes.home,
         routes: {
           AppRoutes.home: (context) => const MainScreen(),
-          AppRoutes.categoryList: (context) => const CategoryListScreen(),
-          AppRoutes.statistics: (context) => const StatisticsScreen(),
+          AppRoutes.categoryList: (context) => CategoryListScreen(),
+          AppRoutes.statistics: (context) => StatisticsScreen(),
         },
       ),
     );
@@ -80,14 +92,7 @@ class _MainScreenState extends State<MainScreen> {
     const StatisticsScreen(),
     const ScheduleScreen(),
     const HabitScreen(),
-    const Scaffold(
-      body: Center(
-        child: Text(
-          '设置功能开发中...',
-          style: TextStyle(fontSize: 18, color: AppColors.textSecondary),
-        ),
-      ),
-    ),
+    const SettingsScreen(),
   ];
 
   @override

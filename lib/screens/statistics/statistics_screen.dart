@@ -300,19 +300,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Future<void> _showCustomDateRangePicker(TransactionProvider provider) async {
-    final now = qx.DateUtils.getBeijingTime();
-    final picked = await showDateRangePicker(
+    await showModalBottomSheet(
       context: context,
-      firstDate: DateTime(2020),
-      lastDate: now,
-      initialDateRange: provider.dateRangeType == 'custom'
-          ? provider.currentDateRange
-          : null,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        builder: (context, scrollController) => _FilterDialog(
+          provider: provider,
+          scrollController: scrollController,
+        ),
+      ),
     );
-    
-    if (picked != null && mounted) {
-      provider.setCustomDateRange(picked.start, picked.end);
-    }
   }
 
   Widget _buildSummaryCard(Map<String, double> summary) {
@@ -470,5 +471,321 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     } catch (e) {
       return {};
     }
+  }
+}
+
+class _FilterDialog extends StatefulWidget {
+  final TransactionProvider provider;
+  final ScrollController scrollController;
+
+  const _FilterDialog({
+    required this.provider,
+    required this.scrollController,
+  });
+
+  @override
+  State<_FilterDialog> createState() => _FilterDialogState();
+}
+
+class _FilterDialogState extends State<_FilterDialog> {
+  late int _selectedYear;
+  late int _selectedMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = qx.DateUtils.getBeijingTime();
+    _selectedYear = widget.provider.currentDate.year;
+    _selectedMonth = widget.provider.currentDate.month;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = qx.DateUtils.getBeijingTime();
+    final minYear = 2020;
+    final maxYear = now.year;
+    const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月',
+      '七月', '八月', '九月', '十月', '十一月', '十二月'];
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: CustomScrollView(
+        controller: widget.scrollController,
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '筛选',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          widget.provider.resetToCurrentDate();
+                          Navigator.pop(context);
+                        },
+                        child: const Text('重置'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 快速选择：按年
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '按年查看（$minYear 年 ~ $maxYear 年）',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: List.generate(maxYear - minYear + 1, (index) {
+                      final year = minYear + index;
+                      final isSelected = widget.provider.dateRangeType == 'year'
+                          && widget.provider.currentDate.year == year;
+                      return GestureDetector(
+                        onTap: () {
+                          widget.provider.jumpToYear(year);
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primary : AppColors.surface,
+                            borderRadius: BorderRadius.circular(22),
+                            border: isSelected
+                                ? Border.all(color: AppColors.primary)
+                                : null,
+                          ),
+                          child: Text(
+                            '$year年',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isSelected ? Colors.white : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // 快速选择：按年月
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '按月查看（快速跳转）',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // 年份选择
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int>(
+                              value: _selectedYear,
+                              isExpanded: true,
+                              items: List.generate(maxYear - minYear + 1, (index) {
+                                final year = minYear + index;
+                                return DropdownMenuItem(
+                                  value: year,
+                                  child: Text(
+                                    '$year年',
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                );
+                              }),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _selectedYear = value;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int>(
+                              value: _selectedMonth,
+                              isExpanded: true,
+                              items: List.generate(12, (index) {
+                                return DropdownMenuItem(
+                                  value: index + 1,
+                                  child: Text(
+                                    monthNames[index],
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                );
+                              }),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _selectedMonth = value;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        widget.provider.jumpToYearMonth(_selectedYear, _selectedMonth);
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        '查看 $_selectedYear 年 $_selectedMonth 月',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // 自定义日期范围
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '自定义日期范围',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final picked = await showDateRangePicker(
+                          context: context,
+                          firstDate: DateTime(2020),
+                          lastDate: now,
+                          initialDateRange: widget.provider.dateRangeType == 'custom'
+                              ? widget.provider.currentDateRange
+                              : null,
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: Theme.of(context).colorScheme.copyWith(
+                                  primary: AppColors.primary,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null && mounted) {
+                          widget.provider.setCustomDateRange(picked.start, picked.end);
+                          if (mounted) {
+                            Navigator.pop(context);
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.surface,
+                        foregroundColor: AppColors.textPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        '选择日期范围...',
+                        style: TextStyle(fontSize: 15),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

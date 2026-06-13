@@ -101,49 +101,50 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               });
             }
 
-            return Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildTypeButton('支出', 'expense'),
-                      const SizedBox(width: 16),
-                      _buildTypeButton('收入', 'income'),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  child: TextField(
-                    controller: _amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: '0.00',
-                      hintStyle: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textTertiary,
-                      ),
-                      border: InputBorder.none,
-                      prefixText: '¥',
-                      prefixStyle: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary,
-                      ),
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildTypeButton('支出', 'expense'),
+                        const SizedBox(width: 16),
+                        _buildTypeButton('收入', 'income'),
+                      ],
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Container(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    child: TextField(
+                      controller: _amountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: '0.00',
+                        hintStyle: TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textTertiary,
+                        ),
+                        border: InputBorder.none,
+                        prefixText: '¥',
+                        prefixStyle: TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
                     margin: const EdgeInsets.all(16),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -152,61 +153,62 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: GridView.builder(
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 5,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                              childAspectRatio: 0.9,
-                            ),
-                            itemCount: categories.length,
-                            itemBuilder: (context, index) {
-                              final category = categories[index];
-                              final isSelected = category.id == _selectedCategoryId;
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedCategoryId = category.id;
-                                  });
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')).withOpacity(0.1)
-                                        : AppColors.background,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: isSelected
-                                        ? Border.all(
-                                            color: Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')),
-                                            width: 2,
-                                          )
-                                        : null,
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        category.icon,
-                                        style: const TextStyle(fontSize: 22),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        category.name,
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 5,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 0.9,
                           ),
+                          itemCount: categories.length,
+                          itemBuilder: (context, index) {
+                            final category = categories[index];
+                            final isSelected = category.id == _selectedCategoryId;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedCategoryId = category.id;
+                                });
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')).withOpacity(0.1)
+                                      : AppColors.background,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: isSelected
+                                      ? Border.all(
+                                          color: Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')),
+                                          width: 2,
+                                        )
+                                      : null,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      category.icon,
+                                      style: const TextStyle(fontSize: 22),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      category.name,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
                         const Divider(),
                         const SizedBox(height: 10),
@@ -231,24 +233,24 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       ],
                     ),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  child: ElevatedButton(
-                    onPressed: _saveTransaction,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    child: ElevatedButton(
+                      onPressed: _saveTransaction,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        '保存',
+                        style: TextStyle(fontSize: 18),
                       ),
                     ),
-                    child: const Text(
-                      '保存',
-                      style: TextStyle(fontSize: 18),
-                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           },
         ),

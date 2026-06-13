@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/habit_goal.dart';
 import '../models/habit_record.dart';
 import '../services/database_service.dart';
+import '../utils/holiday_service.dart';
 
 class HabitProvider with ChangeNotifier {
   List<HabitGoal> _goals = [];
@@ -17,6 +18,11 @@ class HabitProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // 确保节假日服务已准备好（内置数据 + 本地缓存）
+      await HolidayService().ensureInitialized();
+      // 异步尝试在线刷新（不阻塞，本次会话内最多尝试一次）
+      HolidayService().tryRefreshOnline();
+
       _goals = await DatabaseService.instance.getActiveHabitGoals();
       
       // 加载当前月份的所有记录
@@ -196,5 +202,47 @@ class HabitProvider with ChangeNotifier {
   bool isCompleted(int goalId, DateTime date) {
     final dateKey = DateTime(date.year, date.month, date.day);
     return _completedGoalIds[dateKey]?.contains(goalId) ?? false;
+  }
+
+  /// 判断某个目标在指定日期是否应该显示（根据频率计算）
+  bool shouldShowOnDate(HabitGoal goal, DateTime date) {
+    // startDate 之前不显示
+    try {
+      final start = DateTime.parse(goal.startDate);
+      if (date.isBefore(DateTime(start.year, start.month, start.day))) {
+        return false;
+      }
+    } catch (_) {}
+
+    switch (goal.frequency) {
+      case 'daily':
+        return true;
+      case 'weekdays':
+        // 工作日：考虑中国节假日
+        return HolidayService().isWorkday(date);
+      case 'weekly':
+        // 每周一次 —— 以周日为每周目标日（用户习惯以周末为一周之末）
+        // 这里简单处理：每天都显示（让用户自己选一个时间打卡）
+        return true;
+      case 'custom':
+        if (goal.targetDays == null || goal.targetDays!.isEmpty) return true;
+        final selected = goal.targetDays!.split(',').map((e) => int.tryParse(e)).whereType<int>().toSet();
+        return selected.contains(date.weekday);
+      case 'interval':
+        final interval = goal.customIntervalDays;
+        if (interval == null || interval < 1) return true;
+        try {
+          final start = DateTime.parse(goal.startDate);
+          final startDay = DateTime(start.year, start.month, start.day);
+          final targetDay = DateTime(date.year, date.month, date.day);
+          final diff = targetDay.difference(startDay).inDays;
+          // diff 是 0, interval, 2*interval ... 的日子才显示
+          return diff % interval == 0;
+        } catch (_) {
+          return true;
+        }
+      default:
+        return true;
+    }
   }
 }

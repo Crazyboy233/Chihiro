@@ -6,6 +6,7 @@ class HabitGoal {
   String color;
   String frequency;
   String? targetDays;
+  int? customIntervalDays;
   String startDate;
   String? endDate;
   int isActive;
@@ -20,6 +21,7 @@ class HabitGoal {
     required this.color,
     required this.frequency,
     this.targetDays,
+    this.customIntervalDays,
     required this.startDate,
     this.endDate,
     this.isActive = 1,
@@ -36,6 +38,7 @@ class HabitGoal {
       'color': color,
       'frequency': frequency,
       'target_days': targetDays,
+      'custom_interval_days': customIntervalDays,
       'start_date': startDate,
       'end_date': endDate,
       'is_active': isActive,
@@ -53,6 +56,7 @@ class HabitGoal {
       color: map['color'],
       frequency: map['frequency'],
       targetDays: map['target_days'],
+      customIntervalDays: map['custom_interval_days'],
       startDate: map['start_date'],
       endDate: map['end_date'],
       isActive: map['is_active'] ?? 1,

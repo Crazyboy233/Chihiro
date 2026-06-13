@@ -110,6 +110,24 @@ class TransactionProvider extends ChangeNotifier {
     loadTransactions();
   }
 
+  /// 跳转到指定年月（不重置到当前时间），用于筛选对话框的快速跳转
+  void jumpToYearMonth(int year, int month) {
+    _dateRangeType = 'month';
+    _currentDate = DateTime(year, month);
+    _customDateRange = null;
+    notifyListeners();
+    loadTransactions();
+  }
+
+  /// 跳转到指定年（不重置到当前时间），用于筛选对话框的快速跳转
+  void jumpToYear(int year) {
+    _dateRangeType = 'year';
+    _currentDate = DateTime(year);
+    _customDateRange = null;
+    notifyListeners();
+    loadTransactions();
+  }
+
   void resetToCurrentDate() {
     _currentDate = qx.DateUtils.getBeijingTime();
     notifyListeners();

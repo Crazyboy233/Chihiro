@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../utils/data_backup.dart';
 import '../../providers/transaction_provider.dart';
@@ -34,6 +35,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
   // 导出数据
   // ============================================================
   Future<void> _doExport() async {
+    final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -58,13 +60,13 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
     try {
       final path = await DataBackup.exportAll();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('✅ 导出成功！文件路径:\n$path'), duration: const Duration(seconds: 6)),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('❌ 导出失败: $e')),
         );
       }
@@ -77,7 +79,16 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
   // 手动输入路径导入
   // ============================================================
   Future<void> _doImportFromPath() async {
-    final controller = TextEditingController();
+    final messenger = ScaffoldMessenger.of(context);
+    final txProvider = context.read<TransactionProvider>();
+    final habitProvider = context.read<HabitProvider>();
+    // 先拿到当前备份目录，作为对话框默认值
+    final defaultDir = _backupPath ?? await DataBackup.getBackupDirectoryPath();
+    // 默认填入目录 + 示例文件名，用户只需修改文件名即可
+    final controller = TextEditingController(
+      text: '$defaultDir/chihiro_backup_yyyy-mm-dd.json',
+    );
+    if (!mounted) return;
     final selected = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
@@ -87,12 +98,12 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              '警告：导入会清空当前应用的所有数据，然后写入文件中的数据',
-              style: TextStyle(color: Colors.red, fontSize: 13),
+              '提示：导入为「追加合并」模式，不会删除当前任何数据,如果已经一份数据，将会出现重复记录，请谨慎操作',
+              style: TextStyle(color: Colors.green, fontSize: 13),
             ),
             const SizedBox(height: 12),
             const Text(
-              '请输入备份文件的完整路径（例如 /storage/emulated/0/Android/data/com.chihiro/files/Backup/chihiro_backup_xxxx.json）',
+              '下方已自动填入备份目录，请将文件名替换为你要导入的文件（例如 chihiro_backup_2026-06-14T10-30-00.json）',
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 8),
@@ -100,10 +111,10 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
               controller: controller,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                labelText: '文件路径',
+                labelText: '文件完整路径',
               ),
               minLines: 2,
-              maxLines: 3,
+              maxLines: 4,
             ),
           ],
         ),
@@ -122,11 +133,12 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
 
     if (selected == null || selected.isEmpty) return;
 
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('⚠️ 最后确认'),
-        content: const Text('导入后会清空当前所有数据，确定继续？'),
+        title: const Text('确认导入'),
+        content: const Text('将以「追加合并」模式导入文件中的数据，不会删除你当前已有的任何数据。确定继续？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -134,8 +146,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('我确定导入'),
+            child: const Text('开始导入'),
           ),
         ],
       ),
@@ -145,19 +156,22 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final imported = await DataBackup.importFromFile(selected);
+      final result = await DataBackup.importFromFile(selected);
+      await txProvider.loadTransactions();
+      if (mounted) await habitProvider.loadGoals();
       if (mounted) {
-        await context.read<TransactionProvider>().loadTransactions();
-        await context.read<HabitProvider>().loadGoals();
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ 导入成功！共导入 $imported 条记录')),
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ 导入成功！新增 ${result['inserted']} 条记录，合并复用 ${result['merged']} 条',
+            ),
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('❌ 导入失败: $e')),
         );
       }
@@ -170,10 +184,13 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
   // 从备份目录中选择文件导入
   // ============================================================
   Future<void> _showBackupListAndImport() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final txProvider = context.read<TransactionProvider>();
+    final habitProvider = context.read<HabitProvider>();
     final files = await DataBackup.listBackupFiles();
     if (files.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('当前目录下没有备份文件')),
         );
       }
@@ -202,7 +219,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                   icon: const Icon(Icons.delete, color: Colors.grey),
                   onPressed: () async {
                     await DataBackup.deleteBackupFile(file.path);
-                    if (mounted) Navigator.pop(context);
+                    if (mounted) Navigator.pop(this.context);
                   },
                 ),
               );
@@ -220,11 +237,12 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
 
     if (selected == null) return;
 
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('⚠️ 最后确认'),
-        content: const Text('导入后会清空当前所有数据，确定继续？'),
+        title: const Text('确认导入'),
+        content: const Text('将以「追加合并」模式导入文件中的数据，不会删除你当前已有的任何数据。确定继续？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -232,8 +250,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('我确定导入'),
+            child: const Text('开始导入'),
           ),
         ],
       ),
@@ -243,19 +260,22 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final imported = await DataBackup.importFromFile(selected);
+      final result = await DataBackup.importFromFile(selected);
+      await txProvider.loadTransactions();
+      if (mounted) await habitProvider.loadGoals();
       if (mounted) {
-        await context.read<TransactionProvider>().loadTransactions();
-        await context.read<HabitProvider>().loadGoals();
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ 导入成功！共导入 $imported 条记录')),
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ 导入成功！新增 ${result['inserted']} 条记录，合并复用 ${result['merged']} 条',
+            ),
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('❌ 导入失败: $e')),
         );
       }
@@ -336,26 +356,59 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          '备份文件保存在以下目录，可通过手机的文件管理器访问：',
+                          '手机上备份文件保存在此目录，用文件管理器按路径逐层打开即可找到：',
                           style: TextStyle(fontSize: 13, color: Colors.grey),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.grey[100],
+                            color: Colors.grey[50],
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
                           ),
-                          child: Text(
-                            _backupPath ?? '加载中...',
-                            style: const TextStyle(fontSize: 13, fontFamily: 'monospace', color: Colors.black87),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _backupPath ?? '/storage/emulated/0/Android/data/com.chihiro/files/Backup',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontFamily: 'monospace',
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.copy, color: Colors.black87, size: 20),
+                                tooltip: '复制路径',
+                                onPressed: () async {
+                                  final scaffoldMessenger = ScaffoldMessenger.of(this.context);
+                                  final path = _backupPath ?? await DataBackup.getBackupDirectoryPath();
+                                  await Clipboard.setData(ClipboardData(text: path));
+                                  if (mounted) {
+                                    scaffoldMessenger.showSnackBar(
+                                      const SnackBar(content: Text('✅ 路径已复制'), duration: Duration(seconds: 2)),
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          '提示：重装 App 后，把备份文件复制到新应用的相同目录下，再点"从备份文件导入"即可恢复数据。',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.amber[50],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            '💡 小提示：导出的文件名类似 chihiro_backup_2026-06-14T10-30-00.json。重装后把文件复制到上面目录，再点"从备份文件导入"。',
+                            style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.5),
+                          ),
                         ),
                       ],
                     ),

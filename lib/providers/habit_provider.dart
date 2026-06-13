@@ -214,6 +214,18 @@ class HabitProvider with ChangeNotifier {
       }
     } catch (_) {}
 
+    // endDate 之后不显示
+    if (goal.endDate != null && goal.endDate!.isNotEmpty) {
+      try {
+        final end = DateTime.parse(goal.endDate!);
+        final endDay = DateTime(end.year, end.month, end.day);
+        final targetDay = DateTime(date.year, date.month, date.day);
+        if (targetDay.isAfter(endDay)) {
+          return false;
+        }
+      } catch (_) {}
+    }
+
     switch (goal.frequency) {
       case 'daily':
         return true;

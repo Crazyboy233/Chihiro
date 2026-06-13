@@ -55,7 +55,7 @@ class CategoryListScreen extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')).withOpacity(0.1),
+                  color: Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(

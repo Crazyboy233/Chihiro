@@ -7,6 +7,7 @@ import '../../providers/transaction_provider.dart';
 import '../../services/database_service.dart';
 import '../../utils/date_utils.dart' as qx;
 import '../../utils/number_utils.dart';
+import 'category_detail_screen.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -58,7 +59,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     const SizedBox(height: 20),
                     _buildSummaryCard(summary),
                     const SizedBox(height: 20),
-                    _buildCategoryList(categories, categorySummary),
+                    _buildCategoryList(categories, categorySummary, transactionProvider),
                   ],
                 ),
               );
@@ -334,7 +335,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           Text(
             _type == 'income' ? '总收入' : '总支出',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               fontSize: 14,
             ),
           ),
@@ -352,54 +353,93 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _buildCategoryList(List<Category> categories, Map<String, double> summary) {
+  Widget _buildCategoryList(List<Category> categories, Map<String, double> summary, TransactionProvider provider) {
     final sortedEntries = summary.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     final total = summary.values.fold(0.0, (sum, value) => sum + value);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: sortedEntries.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final entry = sortedEntries[index];
-          Category? category;
-          try {
-            category = categories.firstWhere((c) => c.name == entry.key);
-          } catch (e) {
-            category = null;
-          }
-          final percentageValue = total > 0 ? (entry.value / total * 100) : 0.0;
-          final percentageStr = percentageValue.toStringAsFixed(1);
+    if (sortedEntries.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              const Icon(Icons.inbox_outlined, size: 48, color: AppColors.textSecondary),
+              const SizedBox(height: 12),
+              Text(
+                '这个日期范围内没有记录',
+                style: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.8)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-          return Padding(
-            padding: const EdgeInsets.all(16),
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: sortedEntries.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final entry = sortedEntries[index];
+        Category? category;
+        try {
+          category = categories.firstWhere((c) => c.name == entry.key);
+        } catch (e) {
+          category = null;
+        }
+        final categoryColor = category != null
+            ? Color(int.parse('0xFF${category.color.replaceFirst('#', '')}'))
+            : AppColors.primary;
+        final percentageValue = total > 0 ? (entry.value / total * 100) : 0.0;
+        final percentageStr = percentageValue.toStringAsFixed(1);
+
+        return GestureDetector(
+          onTap: () {
+            if (category != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CategoryDetailScreen(
+                    category: category!,
+                    type: _type,
+                    dateRangeStart: provider.currentDateRange.start,
+                    dateRangeEnd: provider.currentDateRange.end,
+                  ),
+                ),
+              );
+            }
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: category != null
-                        ? Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')).withOpacity(0.1)
-                        : AppColors.divider,
-                    borderRadius: BorderRadius.circular(10),
+                    color: categoryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
                     child: Text(
                       category?.icon ?? '📦',
-                      style: const TextStyle(fontSize: 20),
+                      style: const TextStyle(fontSize: 22),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -412,6 +452,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           Text(
@@ -419,48 +460,59 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Stack(
+                      const SizedBox(height: 10),
+                      Row(
                         children: [
-                          Container(
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: AppColors.divider,
-                              borderRadius: BorderRadius.circular(2),
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                Container(
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.divider,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                                LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final maxWidth = constraints.maxWidth;
+                                    final width = (percentageValue / 100) * maxWidth;
+                                    return Container(
+                                      width: width,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        color: categoryColor,
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ),
-                          Container(
-                            width: (percentageValue / 100) * MediaQuery.of(context).size.width * 0.5,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: category != null
-                                  ? Color(int.parse('0xFF${category.color.replaceFirst('#', '')}'))
-                                  : AppColors.primary,
-                              borderRadius: BorderRadius.circular(2),
+                          const SizedBox(width: 12),
+                          Text(
+                            '$percentageStr%',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$percentageStr%',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -494,7 +546,6 @@ class _FilterDialogState extends State<_FilterDialog> {
   @override
   void initState() {
     super.initState();
-    final now = qx.DateUtils.getBeijingTime();
     _selectedYear = widget.provider.currentDate.year;
     _selectedMonth = widget.provider.currentDate.month;
   }
@@ -502,7 +553,7 @@ class _FilterDialogState extends State<_FilterDialog> {
   @override
   Widget build(BuildContext context) {
     final now = qx.DateUtils.getBeijingTime();
-    final minYear = 2020;
+    const minYear = 2020;
     final maxYear = now.year;
     const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月',
       '七月', '八月', '九月', '十月', '十一月', '十二月'];
@@ -761,7 +812,7 @@ class _FilterDialogState extends State<_FilterDialog> {
                         if (picked != null && mounted) {
                           widget.provider.setCustomDateRange(picked.start, picked.end);
                           if (mounted) {
-                            Navigator.pop(context);
+                            Navigator.pop(this.context);
                           }
                         }
                       },

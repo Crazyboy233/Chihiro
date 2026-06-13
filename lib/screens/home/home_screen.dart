@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('千寻'),
+        title: const Text('Chihiro'),
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list_outlined),
@@ -51,8 +51,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Consumer2<TransactionProvider, CategoryProvider>(
         builder: (context, transactionProvider, categoryProvider, child) {
-          if (transactionProvider.isLoading || categoryProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          if (categoryProvider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
           }
 
           final groupedTransactions = _groupTransactionsByDate(transactionProvider.transactions);
@@ -168,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             '结余',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               fontSize: 12,
             ),
           ),
@@ -194,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(width: 4),
                         Text(
                           '收入',
-                          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11),
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
                         ),
                       ],
                     ),
@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(width: 4),
                         Text(
                           '支出',
-                          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11),
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
                         ),
                       ],
                     ),
@@ -684,7 +684,7 @@ class _SlidableTransactionItemState extends State<_SlidableTransactionItem> with
                       height: 48,
                       decoration: BoxDecoration(
                         color: widget.category != null
-                            ? Color(int.parse('0xFF${widget.category.color.replaceFirst('#', '')}')).withOpacity(0.1)
+                            ? Color(int.parse('0xFF${widget.category.color.replaceFirst('#', '')}')).withValues(alpha: 0.1)
                             : AppColors.divider,
                         borderRadius: BorderRadius.circular(12),
                       ),

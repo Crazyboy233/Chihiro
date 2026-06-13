@@ -368,7 +368,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? AppColors.primary
-                                        : AppColors.primary.withOpacity(0.1),
+                                        : AppColors.primary.withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                 ),
@@ -530,7 +530,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final holidayInfo = HolidayService().getHolidayInfo(day);
     final holidayTitle = holidayInfo.name;
     final isHoliday = holidayInfo.isHoliday;
-    final isMakeup = holidayInfo.isMakeupWorkday;
 
     showModalBottomSheet(
       context: context,
@@ -578,7 +577,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           Row(
                             children: [
                               if (isToday)
-                                Text(
+                                const Text(
                                   '今天',
                                   style: TextStyle(
                                     fontSize: 13,
@@ -633,12 +632,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
+                          color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           '${daySchedules.length} 项',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.primary,
@@ -664,7 +663,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         itemCount: daySchedules.length,
                         itemBuilder: (context, index) {
                           final schedule = daySchedules[index];
-                          return _buildScheduleDetailCard(schedule, day);
+                          return _buildScheduleDetailCard(schedule, day, scheduleProvider);
                         },
                       ),
               ),
@@ -739,7 +738,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _buildScheduleDetailCard(Schedule schedule, DateTime day) {
+  Widget _buildScheduleDetailCard(Schedule schedule, DateTime day, ScheduleProvider scheduleProvider) {
     final color = schedule.color != null
         ? Color(int.parse('0xFF${schedule.color!.replaceFirst('#', '')}'))
         : const Color(0xFFFFB74D);
@@ -755,26 +754,41 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       timeText = '全天';
     } else if (hasTime && endDateTime != null) {
       timeText =
-          '${_formatTime(startDateTime!)} - ${_formatTime(endDateTime!)}';
+          '${_formatTime(startDateTime)} - ${_formatTime(endDateTime)}';
     } else if (hasTime) {
-      timeText = '${_formatTime(startDateTime!)} 开始';
+      timeText = '${_formatTime(startDateTime)} 开始';
     } else {
       timeText = '';
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddScheduleScreen(schedule: schedule),
           ),
-        ],
-      ),
+        );
+        if (mounted) {
+          await scheduleProvider.loadSchedules(
+            DateTime(day.year, day.month, 1),
+            DateTime(day.year, day.month + 1, 0),
+          );
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[200]!, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -814,7 +828,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.12),
+                            color: color.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -878,6 +892,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

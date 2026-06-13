@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'data_management_screen.dart';
 import 'about_screen.dart';
+import 'changelog_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  // 软件版本号 — 每次发版时这里和 pubspec.yaml / build.gradle / Info.plist 同步更新
+  static const String appVersion = '1.1.0';
+  static const int appBuild = 2;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +43,21 @@ class SettingsScreen extends StatelessWidget {
                     );
                   },
                 ),
-                const Divider(height: 1),
+                const Divider(height: 1, thickness: 1, indent: 48),
+                _buildListTile(
+                  icon: Icons.article_outlined,
+                  title: '更新说明',
+                  subtitle: '查看各版本的功能更新',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ChangelogScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1, thickness: 1, indent: 48),
                 _buildListTile(
                   icon: Icons.info_outline,
                   title: '说明',
@@ -55,11 +74,20 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
           const Center(
-            child: Text(
-              'Chihiro · 本地数据 · 你的数据只属于你',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            child: Column(
+              children: [
+                Text(
+                  'Chihiro v$appVersion',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '本地数据 · 你的数据只属于你',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
             ),
           ),
         ],

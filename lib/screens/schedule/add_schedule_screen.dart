@@ -6,8 +6,11 @@ import '../../providers/schedule_provider.dart';
 
 class AddScheduleScreen extends StatefulWidget {
   final DateTime? selectedDate;
+  final Schedule? schedule;
 
-  const AddScheduleScreen({super.key, this.selectedDate});
+  const AddScheduleScreen({super.key, this.selectedDate, this.schedule});
+
+  bool get isEditing => schedule != null;
 
   @override
   State<AddScheduleScreen> createState() => _AddScheduleScreenState();
@@ -46,9 +49,40 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedDate = widget.selectedDate ?? DateTime.now();
-    _startTime = const TimeOfDay(hour: 9, minute: 0);
-    _selectedColor = _availableColors[0];
+
+    if (widget.isEditing) {
+      final s = widget.schedule!;
+      _titleController.text = s.title;
+      _descriptionController.text = s.description ?? '';
+      _selectedColor = _availableColors.contains(s.color)
+          ? s.color
+          : _availableColors[0];
+
+      try {
+        final start = DateTime.parse(s.startTime);
+        _selectedDate = DateTime(start.year, start.month, start.day);
+        _startTime = TimeOfDay(hour: start.hour, minute: start.minute);
+        // 全天判断：如果时间是 0:00 且没有 endTime，或 isAllDay=1
+        if (s.isAllDay == 1) {
+          _isAllDay = true;
+          _startTime = const TimeOfDay(hour: 9, minute: 0);
+        }
+      } catch (_) {
+        _selectedDate = DateTime.now();
+        _startTime = const TimeOfDay(hour: 9, minute: 0);
+      }
+
+      if (s.endTime != null && s.endTime!.isNotEmpty) {
+        try {
+          final e = DateTime.parse(s.endTime!);
+          _endTime = TimeOfDay(hour: e.hour, minute: e.minute);
+        } catch (_) {}
+      }
+    } else {
+      _selectedDate = widget.selectedDate ?? DateTime.now();
+      _startTime = const TimeOfDay(hour: 9, minute: 0);
+      _selectedColor = _availableColors[0];
+    }
   }
 
   @override
@@ -66,11 +100,11 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       _selectedDate.year,
       _selectedDate.month,
       _selectedDate.day,
-      _startTime?.hour ?? 0,
-      _startTime?.minute ?? 0,
+      _isAllDay ? 0 : (_startTime?.hour ?? 0),
+      _isAllDay ? 0 : (_startTime?.minute ?? 0),
     );
 
-    final endDateTime = _endTime != null
+    final endDateTime = _endTime != null && !_isAllDay
         ? DateTime(
             _selectedDate.year,
             _selectedDate.month,
@@ -81,27 +115,65 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         : null;
 
     final schedule = Schedule(
-      title: _titleController.text,
-      description: _descriptionController.text.isNotEmpty ? _descriptionController.text : null,
+      id: widget.schedule?.id,
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.isNotEmpty ? _descriptionController.text.trim() : null,
       startTime: startDateTime.toIso8601String(),
       endTime: endDateTime?.toIso8601String(),
       isAllDay: _isAllDay ? 1 : 0,
       color: _selectedColor,
-      createdAt: now.toIso8601String(),
+      createdAt: widget.schedule?.createdAt ?? now.toIso8601String(),
       updatedAt: now.toIso8601String(),
     );
 
+    final provider = context.read<ScheduleProvider>();
     try {
-      await context.read<ScheduleProvider>().addSchedule(schedule);
-      if (mounted) {
-        Navigator.pop(context);
+      if (widget.isEditing) {
+        await provider.updateSchedule(schedule);
+      } else {
+        await provider.addSchedule(schedule);
       }
+      if (!mounted) return;
+      Navigator.pop(context);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('添加日程失败: $e')),
-        );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${widget.isEditing ? '更新' : '添加'}日程失败: $e')),
+      );
+    }
+  }
+
+  Future<void> _delete() async {
+    final provider = context.read<ScheduleProvider>();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除日程'),
+        content: const Text('确定删除这个日程吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除', style: TextStyle(color: Color(0xFFEF4444))),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      if (widget.schedule?.id != null) {
+        await provider.deleteSchedule(widget.schedule!.id!);
       }
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除失败: $e')),
+      );
     }
   }
 
@@ -118,9 +190,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          '添加日程',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        title: Text(
+          widget.isEditing ? '编辑日程' : '添加日程',
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
       ),
@@ -225,7 +297,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                                   ? [
                                       BoxShadow(
                                         color: Color(int.parse('0xFF${c.replaceFirst('#', '')}'))
-                                            .withOpacity(0.4),
+                                            .withValues(alpha: 0.4),
                                         blurRadius: 10,
                                         spreadRadius: 2,
                                       ),
@@ -290,7 +362,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.15),
+                        color: color.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(Icons.schedule, color: color, size: 20),
@@ -307,7 +379,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                     ),
                     Switch(
                       value: _isAllDay,
-                      activeColor: color,
+                      activeTrackColor: color.withValues(alpha: 0.5),
+                      activeThumbColor: color,
                       onChanged: (value) {
                         setState(() {
                           _isAllDay = value;
@@ -380,12 +453,36 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
-                    '保存',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  child: Text(
+                    widget.isEditing ? '保存' : '添加',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
+              if (widget.isEditing) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton(
+                    onPressed: _delete,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      '删除日程',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -419,7 +516,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: valueColor.withOpacity(0.15),
+                  color: valueColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: valueColor, size: 20),

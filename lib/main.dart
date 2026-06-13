@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => HabitProvider()),
       ],
       child: MaterialApp(
-        title: '千寻',
+        title: 'Chihiro',
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
@@ -70,8 +70,8 @@ class MyApp extends StatelessWidget {
         initialRoute: AppRoutes.home,
         routes: {
           AppRoutes.home: (context) => const MainScreen(),
-          AppRoutes.categoryList: (context) => CategoryListScreen(),
-          AppRoutes.statistics: (context) => StatisticsScreen(),
+          AppRoutes.categoryList: (context) => const CategoryListScreen(),
+          AppRoutes.statistics: (context) => const StatisticsScreen(),
         },
       ),
     );

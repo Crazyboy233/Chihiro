@@ -90,7 +90,6 @@ class TransactionProvider extends ChangeNotifier {
 
   void setDate(DateTime date) {
     _currentDate = date;
-    notifyListeners();
     loadTransactions();
   }
 
@@ -99,14 +98,12 @@ class TransactionProvider extends ChangeNotifier {
     if (type == 'month' || type == 'week' || type == 'year') {
       _currentDate = qx.DateUtils.getBeijingTime();
     }
-    notifyListeners();
     loadTransactions();
   }
 
   void setCustomDateRange(DateTime start, DateTime end) {
     _dateRangeType = 'custom';
     _customDateRange = DateTimeRange(start: start, end: end);
-    notifyListeners();
     loadTransactions();
   }
 
@@ -115,7 +112,6 @@ class TransactionProvider extends ChangeNotifier {
     _dateRangeType = 'month';
     _currentDate = DateTime(year, month);
     _customDateRange = null;
-    notifyListeners();
     loadTransactions();
   }
 
@@ -124,27 +120,23 @@ class TransactionProvider extends ChangeNotifier {
     _dateRangeType = 'year';
     _currentDate = DateTime(year);
     _customDateRange = null;
-    notifyListeners();
     loadTransactions();
   }
 
   void resetToCurrentDate() {
     _currentDate = qx.DateUtils.getBeijingTime();
-    notifyListeners();
     loadTransactions();
   }
 
   void setFilter({int? categoryId, String? searchNote}) {
     _selectedCategoryId = categoryId;
     _searchNote = searchNote;
-    notifyListeners();
     loadTransactions();
   }
 
   void clearFilter() {
     _selectedCategoryId = null;
     _searchNote = null;
-    notifyListeners();
     loadTransactions();
   }
 
@@ -161,7 +153,6 @@ class TransactionProvider extends ChangeNotifier {
         _currentDate = DateTime(_currentDate.year, _currentDate.month - 1);
         break;
     }
-    notifyListeners();
     loadTransactions();
   }
 
@@ -178,7 +169,6 @@ class TransactionProvider extends ChangeNotifier {
         _currentDate = DateTime(_currentDate.year, _currentDate.month + 1);
         break;
     }
-    notifyListeners();
     loadTransactions();
   }
 }

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' hide Category;
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../models/schedule.dart';
@@ -63,7 +62,7 @@ class DatabaseService {
     }
 
     if (conditions.isNotEmpty) {
-      query += ' WHERE ' + conditions.join(' AND ');
+      query += ' WHERE ${conditions.join(' AND ')}';
     }
 
     query += ' ORDER BY date DESC, created_at DESC';

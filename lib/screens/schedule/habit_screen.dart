@@ -40,13 +40,12 @@ class _HabitScreenState extends State<HabitScreen> {
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_habit',
         onPressed: () async {
+          final provider = context.read<HabitProvider>();
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddHabitScreen()),
           );
-          if (mounted) {
-            context.read<HabitProvider>().loadGoals();
-          }
+          provider.loadGoals();
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add_task, size: 28),
@@ -229,7 +228,6 @@ class _HabitScreenState extends State<HabitScreen> {
     bool isSelected = false,
     bool isOutside = false,
   }) {
-    final completedGoalIds = habitProvider.getCompletedGoalIdsForDate(day);
     final goalsToday = habitProvider.goals.where((g) => habitProvider.shouldShowOnDate(g, day)).toList();
     final totalGoals = goalsToday.length;
     final completedToday = goalsToday.where((g) => g.id != null && habitProvider.isCompleted(g.id!, day)).length;
@@ -252,9 +250,9 @@ class _HabitScreenState extends State<HabitScreen> {
 
     // 节假日信息
     final holidayInfo = HolidayService().getHolidayInfo(day);
-    final isHoliday = holidayInfo?.isHoliday ?? false;
-    final isWorkdayShift = holidayInfo?.isMakeupWorkday ?? false;
-    final holidayName = holidayInfo?.name;
+    final isHoliday = holidayInfo.isHoliday;
+    final isWorkdayShift = holidayInfo.isMakeupWorkday;
+    final holidayName = holidayInfo.name;
     final isWeekend = day.weekday == 6 || day.weekday == 7;
 
     // 日期数字颜色
@@ -361,7 +359,7 @@ class _HabitScreenState extends State<HabitScreen> {
             ),
           ),
           // 底部：节假日名称
-          if (holidayName != null && holidayName.isNotEmpty && !isOutside)
+          if (holidayName.isNotEmpty && !isOutside)
             Positioned(
               bottom: 0,
               left: 0,
@@ -503,7 +501,7 @@ class _HabitScreenState extends State<HabitScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: isCompleted ? Colors.green[100] : color.withOpacity(0.1),
+                color: isCompleted ? Colors.green[100] : color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -650,7 +648,7 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
@@ -676,6 +674,24 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
                       ),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 22, color: Color(0xFF6366F1)),
+                  onPressed: () async {
+                    // 先关闭详情弹窗，再打开编辑界面
+                    Navigator.pop(context);
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddHabitScreen(goal: widget.goal),
+                      ),
+                    );
+                    // 编辑后刷新目标列表
+                    if (result != null || result == null) {
+                      await widget.habitProvider.loadGoals();
+                    }
+                  },
+                  tooltip: '编辑',
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, size: 22),
@@ -765,7 +781,7 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
                 const SizedBox(width: 16),
                 _buildLegend(Colors.grey[300]!, '未打卡', false),
                 const SizedBox(width: 16),
-                _buildLegend(color.withOpacity(0.15), '该日无需打卡', false,
+                _buildLegend(color.withValues(alpha: 0.15), '该日无需打卡', false,
                     borderColor: Colors.grey[200]!),
               ],
             ),
@@ -846,7 +862,7 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
                 textColor = Colors.grey[300]!;
               } else if (!shouldShow) {
                 // 该目标在这一天无需打卡（比如周末、工作日频率等）
-                bgColor = color.withOpacity(0.08);
+                bgColor = color.withValues(alpha: 0.08);
                 textColor = Colors.grey[400]!;
               } else if (isCompleted) {
                 bgColor = color;
@@ -915,7 +931,6 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
 
   Widget _buildMonthStats(Color color) {
     // 统计本月该目标的打卡情况
-    final firstDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
     final daysInMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0).day;
 
     int shouldDays = 0;
@@ -936,7 +951,7 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(

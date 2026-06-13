@@ -39,6 +39,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       _type = 'expense';
       _selectedDate = qx.DateUtils.getBeijingTime();
       Future.microtask(() {
+        if (!mounted) return;
         final categories = context.read<CategoryProvider>().expenseCategories;
         if (categories.isNotEmpty) {
           setState(() {
@@ -177,7 +178,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')).withOpacity(0.1)
+                                      ? Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')).withValues(alpha: 0.1)
                                       : AppColors.background,
                                   borderRadius: BorderRadius.circular(10),
                                   border: isSelected
@@ -276,7 +277,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? (_type == 'income' ? AppColors.income : AppColors.expense).withOpacity(0.1)
+              ? (_type == 'income' ? AppColors.income : AppColors.expense).withValues(alpha: 0.1)
               : AppColors.background,
           borderRadius: BorderRadius.circular(20),
         ),

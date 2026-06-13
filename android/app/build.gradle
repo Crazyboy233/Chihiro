@@ -9,6 +9,13 @@ android {
     compileSdk = 36
     ndkVersion "30.0.14904198"   // 加这一行
 
+    // ========== 签名配置：读取 key.properties ==========
+    def keystorePropertiesFile = rootProject.file("key.properties")
+    def keystoreProperties = new Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -25,11 +32,19 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        release {
+            keyAlias = keystoreProperties['keyAlias'] ?: 'chihiro'
+            keyPassword = keystoreProperties['keyPassword'] ?: 'chihiro'
+            storeFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword = keystoreProperties['storePassword'] ?: 'chihiro'
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            // 正式签名（找不到 key.properties 时，fallback 到 debug 签名保证能构建）
+            signingConfig = signingConfigs.release.storeFile != null ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
             shrinkResources false
         }

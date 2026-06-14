@@ -524,7 +524,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   void _showDayDetails(DateTime day, ScheduleProvider scheduleProvider) {
-    final daySchedules = scheduleProvider.getSchedulesByDate(day);
     final isToday = isSameDay(day, DateTime.now());
     final weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
     final holidayInfo = HolidayService().getHolidayInfo(day);
@@ -536,170 +535,177 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.85,
-          ),
-          decoration: const BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 顶部拖拽提示条
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
+        // 用 Consumer 包裹，使弹窗响应 provider 数据变化（例如编辑页删除后刷新）
+        return Consumer<ScheduleProvider>(
+          builder: (context, provider, _) {
+            // 在 builder 内动态读取，这样数据变化时会自动重绘
+            final daySchedules = provider.getSchedulesByDate(day);
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
               ),
-              // 标题行
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${day.year}年${day.month}月${day.day}日 周${weekdayNames[day.weekday - 1]}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              if (isToday)
-                                const Text(
-                                  '今天',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              if (holidayTitle.isNotEmpty) ...[
-                                if (isToday) const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isHoliday
-                                        ? Colors.green[50]
-                                        : Colors.orange[50],
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: isHoliday
-                                          ? Colors.green[200]!
-                                          : Colors.orange[200]!,
-                                      width: 0.5,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    '$holidayTitle${isHoliday ? '（放假）' : '（调休）'}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: isHoliday
-                                          ? Colors.green[700]
-                                          : Colors.orange[700],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                              if (holidayTitle.isEmpty && !isToday)
-                                Text(
-                                  '共 ${daySchedules.length} 项日程',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (daySchedules.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${daySchedules.length} 项',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, size: 22),
-                    ),
-                  ],
-                ),
+              decoration: const BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              // 日程列表
-              Flexible(
-                child: daySchedules.isEmpty
-                    ? _buildEmptyDayState(day)
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-                        shrinkWrap: true,
-                        separatorBuilder: (context, index) => const SizedBox(height: 10),
-                        itemCount: daySchedules.length,
-                        itemBuilder: (context, index) {
-                          final schedule = daySchedules[index];
-                          return _buildScheduleDetailCard(schedule, day, scheduleProvider);
-                        },
-                      ),
-              ),
-              // 添加按钮
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      Navigator.pop(context);
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => AddScheduleScreen(selectedDate: day),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    icon: const Icon(Icons.add, size: 20),
-                    label: const Text(
-                      '添加日程',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 顶部拖拽提示条
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ),
+                  // 标题行
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${day.year}年${day.month}月${day.day}日 周${weekdayNames[day.weekday - 1]}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  if (isToday)
+                                    const Text(
+                                      '今天',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  if (holidayTitle.isNotEmpty) ...[
+                                    if (isToday) const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isHoliday
+                                            ? Colors.green[50]
+                                            : Colors.orange[50],
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: isHoliday
+                                              ? Colors.green[200]!
+                                              : Colors.orange[200]!,
+                                          width: 0.5,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '$holidayTitle${isHoliday ? '（放假）' : '（调休）'}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: isHoliday
+                                              ? Colors.green[700]
+                                              : Colors.orange[700],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  if (holidayTitle.isEmpty && !isToday)
+                                    Text(
+                                      '共 ${daySchedules.length} 项日程',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (daySchedules.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${daySchedules.length} 项',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close, size: 22),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 日程列表
+                  Flexible(
+                    child: daySchedules.isEmpty
+                        ? _buildEmptyDayState(day)
+                        : ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                            shrinkWrap: true,
+                            separatorBuilder: (context, index) => const SizedBox(height: 10),
+                            itemCount: daySchedules.length,
+                            itemBuilder: (context, index) {
+                              final schedule = daySchedules[index];
+                              return _buildScheduleDetailCard(schedule, day, provider);
+                            },
+                          ),
+                  ),
+                  // 添加按钮
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => AddScheduleScreen(selectedDate: day),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.add, size: 20),
+                        label: const Text(
+                          '添加日程',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

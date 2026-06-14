@@ -65,14 +65,14 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       _intervalDays = g.customIntervalDays ?? 2;
 
       try {
-        final s = DateTime.parse(g.startDate);
-        _startDate = DateTime(s.year, s.month, s.day);
+        final s = g.startDate.split('-');
+        _startDate = DateTime(int.parse(s[0]), int.parse(s[1]), int.parse(s[2]));
       } catch (_) {}
 
       if (g.endDate != null && g.endDate!.isNotEmpty) {
         try {
-          final e = DateTime.parse(g.endDate!);
-          _endDate = DateTime(e.year, e.month, e.day);
+          final e = g.endDate!.split('-');
+          _endDate = DateTime(int.parse(e[0]), int.parse(e[1]), int.parse(e[2]));
         } catch (_) {}
       }
 

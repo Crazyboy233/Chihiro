@@ -32,7 +32,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       _amountController.text = widget.transaction!.amount.toString();
       _categoryNoteController.text = widget.transaction!.categoryNote ?? '';
       _noteController.text = widget.transaction!.note ?? '';
-      _selectedDate = DateTime.parse(widget.transaction!.date);
+      final parts = widget.transaction!.date.split('-');
+      _selectedDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
       _selectedCategoryId = widget.transaction!.categoryId;
     } else {
       // 新增模式

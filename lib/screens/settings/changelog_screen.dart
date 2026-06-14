@@ -6,17 +6,30 @@ class ChangelogEntry {
   final String date;
   final List<String> newFeatures;
   final List<String> optimizations;
+  final List<String> bugFixes;
 
   const ChangelogEntry({
     required this.version,
     required this.date,
     this.newFeatures = const [],
     this.optimizations = const [],
+    this.bugFixes = const [],
   });
 }
 
 // 在这里添加新版本的更新说明
 const List<ChangelogEntry> changelog = [
+  ChangelogEntry(
+    version: 'V1.1.1',
+    date: '2026-06-14',
+    optimizations: [
+      '优化数据导入导出功能，支持通过系统文件管理器选择文件导入',
+      '更改了导出数据的保存路径（改为 Download/ChihiroBackup，文件管理器直接可见）',
+    ],
+    bugFixes: [
+      '修复打卡记录在各种交互场景下被清空或丢失的问题',
+    ],
+  ),
   ChangelogEntry(
     version: 'V1.1',
     date: '2026-06-14',
@@ -130,6 +143,17 @@ class ChangelogScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             ...entry.optimizations.map((item) => _buildItem(item)),
+          ],
+
+          // 修复bug
+          if (entry.bugFixes.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            const _SectionHeader(
+              label: '🐛 修复bug',
+              color: Color(0xFFEF4444),
+            ),
+            const SizedBox(height: 8),
+            ...entry.bugFixes.map((item) => _buildItem(item)),
           ],
         ],
       ),

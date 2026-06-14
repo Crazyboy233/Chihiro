@@ -56,7 +56,15 @@ class DateUtils {
   }
 
   static DateTime parseDate(String dateStr) {
-    return DateTime.parse(dateStr);
+    // 注意：DateTime.parse("YYYY-MM-DD") 会解析为 UTC 时间
+    // 这里手动解析为本地时间，以确保与其他日期计算保持一致
+    final parts = dateStr.split('-');
+    if (parts.length >= 3) {
+      return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+    }
+    // 回退到默认解析（处理异常情况
+    final fallback = DateTime.parse(dateStr);
+    return DateTime(fallback.year, fallback.month, fallback.day);
   }
 
   static bool isSameDay(DateTime date1, DateTime date2) {

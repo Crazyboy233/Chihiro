@@ -45,7 +45,7 @@ class _HabitScreenState extends State<HabitScreen> {
             context,
             MaterialPageRoute(builder: (context) => const AddHabitScreen()),
           );
-          provider.loadGoals();
+          await provider.loadGoals(viewedMonth: _habitFocusedDay);
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add_task, size: 28),
@@ -121,24 +121,38 @@ class _HabitScreenState extends State<HabitScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.chevron_left),
-                  onPressed: () {
-                    setState(() {
-                      _habitFocusedDay = DateTime(
-                        _habitFocusedDay.year,
-                        _habitFocusedDay.month - 1,
-                      );
-                    });
+                  onPressed: () async {
+                    final newMonth = DateTime(
+                      _habitFocusedDay.year,
+                      _habitFocusedDay.month - 1,
+                      1,
+                    );
+                    final first = DateTime(newMonth.year, newMonth.month, 1);
+                    final last = DateTime(newMonth.year, newMonth.month + 1, 0);
+                    await habitProvider.loadAllRecordsForMonth(first, last);
+                    if (mounted) {
+                      setState(() {
+                        _habitFocusedDay = newMonth;
+                      });
+                    }
                   },
                 ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
-                  onPressed: () {
-                    setState(() {
-                      _habitFocusedDay = DateTime(
-                        _habitFocusedDay.year,
-                        _habitFocusedDay.month + 1,
-                      );
-                    });
+                  onPressed: () async {
+                    final newMonth = DateTime(
+                      _habitFocusedDay.year,
+                      _habitFocusedDay.month + 1,
+                      1,
+                    );
+                    final first = DateTime(newMonth.year, newMonth.month, 1);
+                    final last = DateTime(newMonth.year, newMonth.month + 1, 0);
+                    await habitProvider.loadAllRecordsForMonth(first, last);
+                    if (mounted) {
+                      setState(() {
+                        _habitFocusedDay = newMonth;
+                      });
+                    }
                   },
                 ),
               ],
@@ -182,10 +196,15 @@ class _HabitScreenState extends State<HabitScreen> {
               _habitFocusedDay = focusedDay;
             });
           },
-          onPageChanged: (focusedDay) {
-            setState(() {
-              _habitFocusedDay = focusedDay;
-            });
+          onPageChanged: (focusedDay) async {
+            final first = DateTime(focusedDay.year, focusedDay.month, 1);
+            final last = DateTime(focusedDay.year, focusedDay.month + 1, 0);
+            await habitProvider.loadAllRecordsForMonth(first, last);
+            if (mounted) {
+              setState(() {
+                _habitFocusedDay = focusedDay;
+              });
+            }
           },
           calendarBuilders: CalendarBuilders(
             dowBuilder: (context, day) {
@@ -583,6 +602,7 @@ class _HabitScreenState extends State<HabitScreen> {
         return _GoalDetailDialog(
           goal: goal,
           habitProvider: habitProvider,
+          initialFocusedDay: _selectedDay ?? _habitFocusedDay,
         );
       },
     );
@@ -593,10 +613,12 @@ class _HabitScreenState extends State<HabitScreen> {
 class _GoalDetailDialog extends StatefulWidget {
   final HabitGoal goal;
   final HabitProvider habitProvider;
+  final DateTime initialFocusedDay;
 
   const _GoalDetailDialog({
     required this.goal,
     required this.habitProvider,
+    required this.initialFocusedDay,
   });
 
   @override
@@ -609,9 +631,8 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _focusedDay = DateTime(now.year, now.month, 1);
-    // 打开弹窗时加载初始月份数据
+    // 使用传入的日期作为初始月份，而不是硬编码当前月
+    _focusedDay = DateTime(widget.initialFocusedDay.year, widget.initialFocusedDay.month, 1);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadMonthData(_focusedDay);
       if (mounted) setState(() {});
@@ -678,18 +699,17 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
                 IconButton(
                   icon: const Icon(Icons.edit, size: 22, color: Color(0xFF6366F1)),
                   onPressed: () async {
-                    // 先关闭详情弹窗，再打开编辑界面
+                    // 记录弹窗当前聚焦的月份，关闭弹窗后打开编辑界面
+                    final focusedMonth = _focusedDay;
                     Navigator.pop(context);
-                    final result = await Navigator.push(
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => AddHabitScreen(goal: widget.goal),
                       ),
                     );
-                    // 编辑后刷新目标列表
-                    if (result != null || result == null) {
-                      await widget.habitProvider.loadGoals();
-                    }
+                    // 编辑后重新加载数据，使用弹窗当前聚焦的月份
+                    await widget.habitProvider.loadGoals(viewedMonth: focusedMonth);
                   },
                   tooltip: '编辑',
                 ),

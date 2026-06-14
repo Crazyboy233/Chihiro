@@ -13,7 +13,9 @@ class HabitProvider with ChangeNotifier {
   List<HabitGoal> get goals => _goals;
   bool get isLoading => _isLoading;
 
-  Future<void> loadGoals() async {
+  /// 加载打卡目标列表和指定月份的打卡记录
+  /// [viewedMonth] 为当前查看的月份，不传则使用当前系统月份
+  Future<void> loadGoals({DateTime? viewedMonth}) async {
     _isLoading = true;
     notifyListeners();
 
@@ -24,11 +26,11 @@ class HabitProvider with ChangeNotifier {
       HolidayService().tryRefreshOnline();
 
       _goals = await DatabaseService.instance.getActiveHabitGoals();
-      
-      // 加载当前月份的所有记录
-      final now = DateTime.now();
-      final firstDay = DateTime(now.year, now.month, 1);
-      final lastDay = DateTime(now.year, now.month + 1, 0);
+
+      // 加载用户当前查看月份的打卡记录（而不是硬编码当前月）
+      final month = viewedMonth ?? DateTime.now();
+      final firstDay = DateTime(month.year, month.month, 1);
+      final lastDay = DateTime(month.year, month.month + 1, 0);
       await loadAllRecordsForMonth(firstDay, lastDay);
     } catch (e) {
       debugPrint('加载打卡目标失败: $e');
@@ -38,20 +40,38 @@ class HabitProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// 加载指定月份范围内的打卡记录（累积式：不会清除其他月份的数据）
   Future<void> loadAllRecordsForMonth(DateTime startDate, DateTime endDate) async {
     try {
-      _completedGoalIds.clear();
+      final startKey = DateTime(startDate.year, startDate.month, startDate.day);
+      final endKey = DateTime(endDate.year, endDate.month, endDate.day);
+      final startStr = startKey.toIso8601String().split('T')[0];
+      final endStr = endKey.toIso8601String().split('T')[0];
+
+      // 步骤1：清除指定月份范围内的已完成记录（保留其他月数据）
+      _completedGoalIds.removeWhere((date, _) =>
+          !date.isBefore(startKey) && !date.isAfter(endKey));
+
+      // 步骤2：为每个目标加载并合并新月份的详细记录（保留其他月数据）
       for (var goal in _goals) {
         if (goal.id != null) {
-          final records = await DatabaseService.instance.getHabitRecords(goal.id!, startDate, endDate);
-          _records[goal.id!] = records;
-          
-          for (var record in records) {
+          final newRecords = await DatabaseService.instance.getHabitRecords(goal.id!, startDate, endDate);
+
+          // 合并到现有 _records：保留范围外的旧记录，用新记录替换范围内的
+          final existing = List<HabitRecord>.from(_records[goal.id!] ?? []);
+          final merged = existing.where((r) {
+            // 只保留范围外的旧记录（日期字符串比较即可）
+            return r.date.compareTo(startStr) < 0 || r.date.compareTo(endStr) > 0;
+          }).toList();
+          merged.addAll(newRecords);
+          merged.sort((a, b) => a.date.compareTo(b.date));
+          _records[goal.id!] = merged;
+
+          for (var record in newRecords) {
             if (record.isCompleted == 1) {
-              final date = DateTime.parse(record.date);
-              if (!_completedGoalIds.containsKey(date)) {
-                _completedGoalIds[date] = {};
-              }
+              final dateParts = record.date.split('-');
+              final date = DateTime(int.parse(dateParts[0]), int.parse(dateParts[1]), int.parse(dateParts[2]));
+              _completedGoalIds.putIfAbsent(date, () => {});
               _completedGoalIds[date]!.add(record.goalId);
             }
           }
@@ -138,7 +158,8 @@ class HabitProvider with ChangeNotifier {
       }
       
       if (record.isCompleted == 1) {
-        final date = DateTime.parse(record.date);
+        final dateParts = record.date.split('-');
+        final date = DateTime(int.parse(dateParts[0]), int.parse(dateParts[1]), int.parse(dateParts[2]));
         if (!_completedGoalIds.containsKey(date)) {
           _completedGoalIds[date] = {};
         }
@@ -156,32 +177,47 @@ class HabitProvider with ChangeNotifier {
   Future<void> toggleHabit(int goalId, DateTime date) async {
     try {
       final dateStr = date.toIso8601String().split('T')[0];
-      final records = getRecords(goalId);
+
+      // 步骤1：先从内存缓存查找
+      final cachedRecords = getRecords(goalId);
       HabitRecord? existingRecord;
-      
-      for (var record in records) {
+      for (var record in cachedRecords) {
         if (record.date == dateStr) {
           existingRecord = record;
           break;
         }
       }
-      
+
+      // 步骤2：内存未命中 → 查询数据库（防止重复插入数据库记录）
+      if (existingRecord == null) {
+        final dayStart = DateTime(date.year, date.month, date.day);
+        final dayEnd = DateTime(date.year, date.month, date.day);
+        final dbRecords = await DatabaseService.instance.getHabitRecords(goalId, dayStart, dayEnd);
+        if (dbRecords.isNotEmpty) {
+          existingRecord = dbRecords.first;
+          // 将数据库查到的记录合并回内存缓存
+          if (_records.containsKey(goalId)) {
+            _records[goalId]!.add(existingRecord);
+          } else {
+            _records[goalId] = [existingRecord];
+          }
+        }
+      }
+
       if (existingRecord != null) {
         // 切换现有记录的状态
         existingRecord.isCompleted = existingRecord.isCompleted == 1 ? 0 : 1;
         await DatabaseService.instance.updateHabitRecord(existingRecord);
-        
+
         final dateKey = DateTime(date.year, date.month, date.day);
         if (existingRecord.isCompleted == 1) {
-          if (!_completedGoalIds.containsKey(dateKey)) {
-            _completedGoalIds[dateKey] = {};
-          }
+          _completedGoalIds.putIfAbsent(dateKey, () => {});
           _completedGoalIds[dateKey]!.add(goalId);
         } else {
           _completedGoalIds[dateKey]?.remove(goalId);
         }
       } else {
-        // 创建新记录
+        // 创建新记录（确保数据库中不存在）
         final now = DateTime.now();
         final record = HabitRecord(
           goalId: goalId,
@@ -191,7 +227,7 @@ class HabitProvider with ChangeNotifier {
         );
         await addRecord(record);
       }
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('切换打卡状态失败: $e');
@@ -208,8 +244,10 @@ class HabitProvider with ChangeNotifier {
   bool shouldShowOnDate(HabitGoal goal, DateTime date) {
     // startDate 之前不显示
     try {
-      final start = DateTime.parse(goal.startDate);
-      if (date.isBefore(DateTime(start.year, start.month, start.day))) {
+      final startParts = goal.startDate.split('-');
+      final start = DateTime(int.parse(startParts[0]), int.parse(startParts[1]), int.parse(startParts[2]));
+      final targetDay = DateTime(date.year, date.month, date.day);
+      if (targetDay.isBefore(start)) {
         return false;
       }
     } catch (_) {}
@@ -217,8 +255,8 @@ class HabitProvider with ChangeNotifier {
     // endDate 之后不显示
     if (goal.endDate != null && goal.endDate!.isNotEmpty) {
       try {
-        final end = DateTime.parse(goal.endDate!);
-        final endDay = DateTime(end.year, end.month, end.day);
+        final endParts = goal.endDate!.split('-');
+        final endDay = DateTime(int.parse(endParts[0]), int.parse(endParts[1]), int.parse(endParts[2]));
         final targetDay = DateTime(date.year, date.month, date.day);
         if (targetDay.isAfter(endDay)) {
           return false;
@@ -244,8 +282,8 @@ class HabitProvider with ChangeNotifier {
         final interval = goal.customIntervalDays;
         if (interval == null || interval < 1) return true;
         try {
-          final start = DateTime.parse(goal.startDate);
-          final startDay = DateTime(start.year, start.month, start.day);
+          final startParts = goal.startDate.split('-');
+          final startDay = DateTime(int.parse(startParts[0]), int.parse(startParts[1]), int.parse(startParts[2]));
           final targetDay = DateTime(date.year, date.month, date.day);
           final diff = targetDay.difference(startDay).inDays;
           // diff 是 0, interval, 2*interval ... 的日子才显示

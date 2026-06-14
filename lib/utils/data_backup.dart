@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -8,7 +9,8 @@ import 'db_helper.dart';
 /// 数据导出/导入工具
 /// - 导出：把数据库所有表的数据读出来，保存为 JSON 文件
 /// - 导入：从 JSON 文件读取数据，**追加合并**到当前数据（不删除任何现有记录）
-/// 作用：换机/重装后把旧数据合并进来；多设备数据汇总
+/// - Android：优先写入公共 Download/ChihiroBackup 目录（文件管理器可见）；
+///   导入使用系统文件选择器（SAF），可选择任意位置的 JSON 文件
 class DataBackup {
   static const _backupVersion = 2;
 
@@ -36,7 +38,7 @@ class DataBackup {
   // 导出
   // ============================================================
 
-  /// 导出全部数据到 JSON 文件
+  /// 导出全部数据到 JSON 文件（优先写入公共 Download/ChihiroBackup 目录）
   /// 返回：导出文件的绝对路径
   static Future<String> exportAll() async {
     final db = await DBHelper.instance.database;
@@ -55,7 +57,7 @@ class DataBackup {
       'tables': tables,
     };
 
-    // 3. 写入文件
+    // 3. 写入文件（优先公共 Download 目录）
     final dir = await _getBackupDirectory();
     final fileName =
         'chihiro_backup_${DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0]}.json';
@@ -73,10 +75,6 @@ class DataBackup {
   // ============================================================
 
   /// 从 JSON 文件导入数据 —— **追加合并模式**
-  /// - 不删除任何现有数据
-  /// - 主表（categories / schedule_categories / habit_goals）：按名称去重，有则复用现有 id，无则新建
-  /// - 明细表（transactions / schedules / habit_records）：外键 id 替换成新映射后整体插入
-  /// 返回：{ 'inserted': n, 'merged': m } 两个统计数
   static Future<Map<String, int>> importFromFile(String filePath) async {
     final file = File(filePath);
     if (!await file.exists()) {
@@ -96,16 +94,15 @@ class DataBackup {
 
     // 各主表的 旧id → 新id 映射
     final Map<String, Map<int, int>> idMappings = {};
-    int inserted = 0; // 实际新插入的记录数
-    int merged = 0; // 因去重被合并复用的记录数
+    int inserted = 0;
+    int merged = 0;
 
     await db.transaction((txn) async {
-      // ====== 第一轮：处理主表（categories / schedule_categories / habit_goals）======
+      // ====== 第一轮：处理主表 ======
       for (final table in _masterTables) {
         final rows = tables[table] as List<dynamic>?;
         if (rows == null || rows.isEmpty) continue;
 
-        // 先拿当前库中已有记录，做去重用
         final existingRows = await txn.query(table);
         final mapping = <int, int>{};
 
@@ -114,14 +111,11 @@ class DataBackup {
           final oldId = map['id'] as int?;
           if (oldId == null) continue;
 
-          // 按字段去重匹配（不同表用不同的"判定重复"规则）
           final existingId = await _findExistingId(txn, table, map, existingRows);
           if (existingId != null) {
-            // 已有同名记录 → 直接复用现有 id，不插入
             mapping[oldId] = existingId;
             merged++;
           } else {
-            // 是新记录 → 去掉 id 后插入，拿到新 id
             final copy = Map<String, dynamic>.from(map);
             copy.remove('id');
             final newId = await txn.insert(table, copy);
@@ -132,21 +126,18 @@ class DataBackup {
         idMappings[table] = mapping;
       }
 
-      // ====== 第二轮：处理明细表（transactions / schedules / habit_records）======
+      // ====== 第二轮：处理明细表 ======
       for (final table in _detailTables) {
         final rows = tables[table] as List<dynamic>?;
         if (rows == null || rows.isEmpty) continue;
 
-        // 找到这张表依赖的主表（外键指向哪个主表）
         final masterTable = _getMasterTableForDetail(table);
         final mapping = idMappings[masterTable] ?? {};
         final fkColumn = _getFkColumnForDetail(table);
 
         for (final row in rows) {
           final map = Map<String, dynamic>.from(row as Map);
-          // 去掉自己的 id，让库自增
           map.remove('id');
-          // 外键替换成新 id（如果存在映射）
           if (fkColumn != null && map[fkColumn] != null) {
             final oldFk = map[fkColumn] as int;
             if (mapping[oldFk] != null) {
@@ -163,18 +154,15 @@ class DataBackup {
   }
 
   // ============================================================
-  // 辅助方法：主表去重匹配
+  // 辅助：主表去重匹配
   // ============================================================
 
-  /// 在当前库中查找是否已有"等同"记录，返回其 id；不存在则返回 null
-  /// 按表的业务关键字段去匹配，而不是用 id 匹配（因为是不同库）
   static Future<int?> _findExistingId(
     DatabaseExecutor txn,
     String table,
     Map<String, dynamic> newRow,
     List<Map<String, dynamic>> existingRows,
   ) async {
-    // 用内存里的 existingRows 做匹配，避免对每行都发起查询
     for (final existing in existingRows) {
       final match = _matchesRow(table, newRow, existing);
       if (match) return existing['id'] as int;
@@ -182,24 +170,19 @@ class DataBackup {
     return null;
   }
 
-  /// 判断两条记录是否"同一业务实体"（去重判定规则）
   static bool _matchesRow(String table, Map<String, dynamic> a, Map<String, dynamic> b) {
     switch (table) {
       case 'categories':
-        // 同名 + 同类型 视为同一个分类
         return a['name'] == b['name'] && a['type'] == b['type'];
       case 'schedule_categories':
-        // 同名日程分类视为同一分类
         return a['name'] == b['name'];
       case 'habit_goals':
-        // 同名 + 同起始日 视为同一个打卡目标
         return a['name'] == b['name'] && a['start_date'] == b['start_date'];
       default:
         return false;
     }
   }
 
-  /// 明细表对应的主表名称
   static String _getMasterTableForDetail(String table) {
     switch (table) {
       case 'transactions':
@@ -213,7 +196,6 @@ class DataBackup {
     }
   }
 
-  /// 明细表的外键字段名
   static String? _getFkColumnForDetail(String table) {
     switch (table) {
       case 'transactions':
@@ -231,49 +213,49 @@ class DataBackup {
   // 文件目录与扫描
   // ============================================================
 
-  /// Android 备份文件的固定前缀（主流机型通用，文件管理器可见）
+  /// Android 公共存储根目录
   static const String _androidStoragePrefix = '/storage/emulated/0';
 
-  /// Android 应用包名对应的外部存储路径
-  static const String _androidPackageSuffix = 'Android/data/com.chihiro/files/Backup';
+  /// 公共 Download 目录下的备份子目录（文件管理器可见）
+  static const String _publicSubDir = 'Download/ChihiroBackup';
 
-  /// 获取备份文件保存的目录
-  /// - Android: 固定路径 `/storage/emulated/0/Android/data/com.chihiro/files/Backup`
-  /// - iOS/Windows: 应用沙箱文档目录下的 Backup 文件夹
+  /// 获取备份文件保存目录 —— **优先写入公共 Download/ChihiroBackup 目录**
+  /// 这样用户在文件管理器中直接可见，无需进入 Android/data 隐藏目录
   static Future<Directory> _getBackupDirectory() async {
-    Directory dir;
+    // --- 策略 1：直接写入公共 Download/ChihiroBackup（首选，Android 文件管理器可见） ---
     try {
-      // Android 优先使用固定路径，保证所有机型路径一致，用户方便查找
-      final androidPath = p.join(_androidStoragePrefix, _androidPackageSuffix);
-      final androidDir = Directory(androidPath);
-      // 尝试在 Android 路径下创建目录来检测是否可用
-      try {
-        if (!await androidDir.exists()) {
-          await androidDir.create(recursive: true);
-        }
-        dir = androidDir;
-      } catch (_) {
-        // 固定路径不可用时（如 iOS/Windows），回退到平台默认的应用目录
-        final externalDirs = await getExternalStorageDirectories();
-        if (externalDirs != null && externalDirs.isNotEmpty) {
-          dir = Directory(p.join(externalDirs.first.path, 'Backup'));
-        } else {
-          final docDir = await getApplicationDocumentsDirectory();
-          dir = Directory(p.join(docDir.path, 'Backup'));
-        }
+      final publicPath = p.join(_androidStoragePrefix, _publicSubDir);
+      final publicDir = Directory(publicPath);
+      if (!await publicDir.exists()) {
+        await publicDir.create(recursive: true);
       }
+      // 写入测试：确认该目录确实可写
+      final testFile = File(p.join(publicDir.path, '.chihiro_write_test'));
+      await testFile.writeAsString('ok');
+      await testFile.delete();
+      return publicDir;
     } catch (_) {
-      final docDir = await getApplicationDocumentsDirectory();
-      dir = Directory(p.join(docDir.path, 'Backup'));
+      // 公共目录不可写，继续回退
     }
 
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
+    // --- 策略 2：使用 path_provider 获取的外部存储目录（/storage/emulated/0/Android/data/com.chihiro/files） ---
+    try {
+      final externalDirs = await getExternalStorageDirectories();
+      if (externalDirs != null && externalDirs.isNotEmpty) {
+        final dir = Directory(p.join(externalDirs.first.path, 'Backup'));
+        if (!await dir.exists()) await dir.create(recursive: true);
+        return dir;
+      }
+    } catch (_) {}
+
+    // --- 策略 3：应用沙箱 Documents 目录（最终兜底） ---
+    final docDir = await getApplicationDocumentsDirectory();
+    final dir = Directory(p.join(docDir.path, 'Backup'));
+    if (!await dir.exists()) await dir.create(recursive: true);
     return dir;
   }
 
-  /// 获取备份目录的完整路径（供 UI 展示 / 复制 / 默认填充）
+  /// 获取备份目录的完整路径（供 UI 展示/复制）
   static Future<String> getBackupDirectoryPath() async {
     final dir = await _getBackupDirectory();
     return dir.path;
@@ -294,6 +276,32 @@ class DataBackup {
     final file = File(path);
     if (await file.exists()) {
       await file.delete();
+    }
+  }
+
+  // ============================================================
+  // 系统文件选择器（SAF）
+  // ============================================================
+
+  /// 调用系统文件选择器，让用户选择一个 JSON 备份文件
+  /// 返回选中文件的绝对路径；用户取消则返回 null
+  ///
+  /// **这个方法的优点**：通过 Android SAF（存储访问框架）获得临时访问权限，
+  /// 不需要任何存储权限，用户可以选择手机上任意位置的文件，
+  /// 包括 /storage/emulated/0 根目录、Download、Documents、SD 卡等。
+  static Future<String?> pickBackupFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['json', 'JSON', 'Json'],
+        dialogTitle: '选择备份文件',
+      );
+      if (result == null || result.files.isEmpty) return null;
+      final path = result.files.single.path;
+      if (path == null) throw Exception('所选文件无法被应用访问');
+      return path;
+    } catch (e) {
+      throw Exception('选择文件失败: $e');
     }
   }
 }

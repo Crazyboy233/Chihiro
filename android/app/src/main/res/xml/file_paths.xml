@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 外部存储根目录（/storage/emulated/0/） -->
+    <external-path name="external_files" path="." />
+    <!-- 外部存储公共 Download 目录 -->
+    <external-path name="download" path="Download/" />
+    <!-- 外部存储公共 Documents 目录 -->
+    <external-path name="documents" path="Documents/" />
+    <!-- 应用专属外部文件目录（/storage/emulated/0/Android/data/com.chihiro/files/） -->
+    <external-files-path name="app_files" path="." />
+    <!-- 应用缓存目录 -->
+    <external-cache-path name="cache" path="." />
+    <cache-path name="internal_cache" path="." />
+    <files-path name="internal_files" path="." />
+</paths>

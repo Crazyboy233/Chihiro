@@ -20,6 +20,29 @@ class ChangelogEntry {
 // 在这里添加新版本的更新说明
 const List<ChangelogEntry> changelog = [
   ChangelogEntry(
+    version: 'V1.1.3',
+    date: '2026-06-17',
+    newFeatures: [
+      '新增分类：酒店、出去浪',
+    ],
+    optimizations: [
+      '日程日历支持左滑/右滑屏幕切换月份',
+      '统计界面支持左滑/右滑切换周/月/年',
+      '统计界面的详细分类的每笔账单现在会显示分类备注 + 个人备注',
+    ],
+  ),
+  ChangelogEntry(
+    version: 'V1.1.2',
+    date: '2026-06-15',
+    optimizations: [
+      '新增部分分类，分类改为内嵌式，可单独下滑以查看所有分类',
+      '支持拖动分类图标交换分类位置',
+    ],
+    bugFixes: [
+      '修复打卡完成后颜色固定为绿色的 bug，现在会正确显示目标所选颜色',
+    ],
+  ),
+  ChangelogEntry(
     version: 'V1.1.1',
     date: '2026-06-14',
     optimizations: [

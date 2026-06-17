@@ -165,43 +165,12 @@ class DatabaseService {
     return List.generate(maps.length, (i) => Category.fromMap(maps[i]));
   }
 
+  /// ⚠️ 已废弃：默认分类的初始化统一由 DBHelper 负责
+  /// （在数据库打开时自动调用 ensureDefaultCategories）
+  /// 保留此方法仅为了兼容历史代码，内部直接转发到 DBHelper
   Future<void> initializeDefaultCategories() async {
     final db = await DBHelper.instance.database;
-    final existingCategories = await db.query('categories');
-    
-    if (existingCategories.isEmpty) {
-      
-      final defaultCategories = [
-        {'name': '餐饮', 'type': 'expense', 'icon': '🍔', 'color': '#EF4444', 'is_default': 1, 'sort_order': 1},
-        {'name': '交通', 'type': 'expense', 'icon': '🚗', 'color': '#F59E0B', 'is_default': 1, 'sort_order': 2},
-        {'name': '购物', 'type': 'expense', 'icon': '🛒', 'color': '#8B5CF6', 'is_default': 1, 'sort_order': 3},
-        {'name': '地铁', 'type': 'expense', 'icon': '🚇', 'color': '#3B82F6', 'is_default': 1, 'sort_order': 4},
-        {'name': '蔬菜', 'type': 'expense', 'icon': '🥬', 'color': '#10B981', 'is_default': 1, 'sort_order': 5},
-        {'name': '水果', 'type': 'expense', 'icon': '🍎', 'color': '#F97316', 'is_default': 1, 'sort_order': 6},
-        {'name': '零食', 'type': 'expense', 'icon': '🍫', 'color': '#DC2626', 'is_default': 1, 'sort_order': 7},
-        {'name': '运动', 'type': 'expense', 'icon': '🏃', 'color': '#059669', 'is_default': 1, 'sort_order': 8},
-        {'name': '娱乐', 'type': 'expense', 'icon': '🎮', 'color': '#7C3AED', 'is_default': 1, 'sort_order': 9},
-        {'name': '通讯', 'type': 'expense', 'icon': '📱', 'color': '#0284C7', 'is_default': 1, 'sort_order': 10},
-        {'name': '住房', 'type': 'expense', 'icon': '🏠', 'color': '#D97706', 'is_default': 1, 'sort_order': 11},
-        {'name': '游戏', 'type': 'expense', 'icon': '🎲', 'color': '#DB2777', 'is_default': 1, 'sort_order': 12},
-        {'name': '长辈', 'type': 'expense', 'icon': '👴', 'color': '#64748B', 'is_default': 1, 'sort_order': 13},
-        {'name': '社交', 'type': 'expense', 'icon': '👥', 'color': '#475569', 'is_default': 1, 'sort_order': 14},
-        {'name': '日用', 'type': 'expense', 'icon': '🧴', 'color': '#0891B2', 'is_default': 1, 'sort_order': 15},
-        {'name': '旅行', 'type': 'expense', 'icon': '✈️', 'color': '#6366F1', 'is_default': 1, 'sort_order': 16},
-        {'name': '数码', 'type': 'expense', 'icon': '📱', 'color': '#14B8A6', 'is_default': 1, 'sort_order': 17},
-        {'name': '学习', 'type': 'expense', 'icon': '📚', 'color': '#EAB308', 'is_default': 1, 'sort_order': 18},
-        {'name': 'AI', 'type': 'expense', 'icon': '🤖', 'color': '#EC4899', 'is_default': 1, 'sort_order': 19},
-        {'name': '工资', 'type': 'income', 'icon': '💰', 'color': '#10B981', 'is_default': 1, 'sort_order': 1},
-        {'name': '奖金', 'type': 'income', 'icon': '🎁', 'color': '#F59E0B', 'is_default': 1, 'sort_order': 2},
-        {'name': '理财', 'type': 'income', 'icon': '📈', 'color': '#3B82F6', 'is_default': 1, 'sort_order': 3},
-        {'name': '兼职', 'type': 'income', 'icon': '💼', 'color': '#8B5CF6', 'is_default': 1, 'sort_order': 4},
-        {'name': '其他', 'type': 'income', 'icon': '📦', 'color': '#64748B', 'is_default': 1, 'sort_order': 5},
-      ];
-      
-      for (var category in defaultCategories) {
-        await db.insert('categories', category);
-      }
-    }
+    await DBHelper.instance.ensureDefaultCategories(db);
   }
 
   Future<int> insertSchedule(Schedule schedule) async {

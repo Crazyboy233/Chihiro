@@ -97,9 +97,80 @@ class DataBackup {
     int inserted = 0;
     int merged = 0;
 
+    // 构建 name+type → 当前应用默认值 的映射（用于补全从鲨鱼记账等第三方导入的数据）
+    // 只有在这个集合里的分类才会被写入数据库
+    final defaultByKey = <String, Map<String, Object>>{
+      for (final c in DBHelper.defaultCategories) '${c['name']}__${c['type']}': c,
+    };
+    final allowedKeys = defaultByKey.keys.toSet();
+
     await db.transaction((txn) async {
-      // ====== 第一轮：处理主表 ======
+      // ====== 特殊处理：categories 表（去重 + 非白名单→其他 + 字段补全） ======
+      // 策略：只有当前应用默认支持的分类才会被写入 categories 表。
+      // 鲨鱼记账的「彩票」「快递」等未知分类，其交易将被映射到「其他」。
+      final categoryRows = tables['categories'] as List<dynamic>?;
+      if (categoryRows != null && categoryRows.isNotEmpty) {
+        // 以 name+type 作为唯一键：先拿库里所有的分类做索引，避免重复插入
+        final allRows = await txn.query('categories');
+        final existingByKey = <String, int>{};
+        for (final e in allRows) {
+          existingByKey['${e['name']}__${e['type']}'] = e['id'] as int;
+        }
+
+        // 确保「其他」分类（expense/income）存在，供未知分类兜底映射
+        final fallbackIds = <String, int>{};
+        for (final type in const ['expense', 'income']) {
+          final key = '其他__$type';
+          if (existingByKey.containsKey(key)) {
+            fallbackIds[type] = existingByKey[key]!;
+          } else if (defaultByKey.containsKey(key)) {
+            final newId = await txn.insert('categories', Map<String, dynamic>.from(defaultByKey[key]!));
+            fallbackIds[type] = newId;
+            existingByKey[key] = newId;
+          }
+        }
+
+        // 遍历导入文件中的分类，逐个建立 旧id → 新id 映射
+        final categoryMapping = <int, int>{};
+        for (final row in categoryRows) {
+          final map = Map<String, dynamic>.from(row as Map);
+          final oldId = map['id'] as int?;
+          if (oldId == null) continue;
+
+          final name = (map['name'] as String?)?.trim() ?? '';
+          final type = (map['type'] as String?)?.trim() ?? '';
+          if (name.isEmpty) continue;
+          final key = '${name}__$type';
+
+          // 库里已有同名分类 → 复用其 id
+          if (existingByKey.containsKey(key)) {
+            categoryMapping[oldId] = existingByKey[key]!;
+            merged++;
+            continue;
+          }
+
+          // 非白名单分类 → 映射到「其他」，不新增分类
+          if (!allowedKeys.contains(key)) {
+            final fallbackId = fallbackIds[type == 'income' ? 'income' : 'expense'];
+            if (fallbackId != null) {
+              categoryMapping[oldId] = fallbackId;
+            }
+            continue;
+          }
+
+          // 白名单分类且库里没有 → 插入（强制使用当前应用的 icon/color 等字段）
+          final d = defaultByKey[key]!;
+          final newId = await txn.insert('categories', Map<String, dynamic>.from(d));
+          categoryMapping[oldId] = newId;
+          existingByKey[key] = newId;
+          inserted++;
+        }
+        idMappings['categories'] = categoryMapping;
+      }
+
+      // ====== 第一轮：处理其余主表 ======
       for (final table in _masterTables) {
+        if (table == 'categories') continue; // 已单独处理
         final rows = tables[table] as List<dynamic>?;
         if (rows == null || rows.isEmpty) continue;
 

@@ -18,6 +18,9 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
   String _type = 'expense';
+  // 用于水平滑动切换日期范围
+  double _dragStartX = 0;
+  static const double _minSwipeDistance = 60;
 
   @override
   void initState() {
@@ -36,6 +39,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       appBar: AppBar(
         title: const Text('统计'),
       ),
+      // 结构：上方内容固定，下方绿色框区域（总支出卡片以下）铺满剩余空间并响应左右滑动
       body: Consumer2<TransactionProvider, CategoryProvider>(
         builder: (context, transactionProvider, categoryProvider, child) {
           final summary = transactionProvider.summary;
@@ -48,20 +52,45 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             builder: (context, snapshot) {
               final categorySummary = snapshot.data ?? {};
 
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildTypeSelector(),
-                    const SizedBox(height: 16),
-                    _buildDateRangeSelector(transactionProvider),
-                    const SizedBox(height: 20),
-                    _buildSummaryCard(summary),
-                    const SizedBox(height: 20),
-                    _buildCategoryList(categories, categorySummary, transactionProvider),
-                  ],
-                ),
+              return Column(
+                children: [
+                  // 上方：类型选择 + 日期选择 + 总支出卡片（不响应左右滑动）
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildTypeSelector(),
+                        const SizedBox(height: 16),
+                        _buildDateRangeSelector(transactionProvider),
+                        const SizedBox(height: 20),
+                        _buildSummaryCard(summary),
+                      ],
+                    ),
+                  ),
+                  // 下方：绿色框区域，Expanded 铺满剩余空间 → 整个区域（含空白）响应左右滑动
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onHorizontalDragStart: (details) {
+                        _dragStartX = details.globalPosition.dx;
+                      },
+                      onHorizontalDragEnd: (details) {
+                        final dx = details.globalPosition.dx - _dragStartX;
+                        if (dx > _minSwipeDistance) {
+                          transactionProvider.previousPeriod(); // 右滑 → 上一个周期
+                        } else if (dx < -_minSwipeDistance) {
+                          transactionProvider.nextPeriod(); // 左滑 → 下一个周期
+                        }
+                      },
+                      // 分类列表本身支持上下滚动（当分类多时）
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildCategoryList(categories, categorySummary, transactionProvider),
+                      ),
+                    ),
+                  ),
+                ],
               );
             },
           );

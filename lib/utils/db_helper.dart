@@ -11,7 +11,8 @@ class DBHelper {
 
   DBHelper._init();
 
-  static const List<Map<String, Object>> defaultCategories = [
+  // 支出分类（按 sort_order 升序排列，新增分类请追加在「其他」之前）
+  static const List<Map<String, Object>> _defaultExpenseCategories = [
     {'name': '餐饮', 'type': 'expense', 'icon': '🍜', 'color': '#EF4444', 'is_default': 1, 'sort_order': 1},
     {'name': '交通', 'type': 'expense', 'icon': '🚌', 'color': '#F59E0B', 'is_default': 1, 'sort_order': 2},
     {'name': '购物', 'type': 'expense', 'icon': '🛍️', 'color': '#8B5CF6', 'is_default': 1, 'sort_order': 3},
@@ -31,13 +32,32 @@ class DBHelper {
     {'name': '数码', 'type': 'expense', 'icon': '💻', 'color': '#14B8A6', 'is_default': 1, 'sort_order': 17},
     {'name': '学习', 'type': 'expense', 'icon': '📚', 'color': '#EAB308', 'is_default': 1, 'sort_order': 18},
     {'name': 'AI', 'type': 'expense', 'icon': '🤖', 'color': '#EC4899', 'is_default': 1, 'sort_order': 19},
-    {'name': '其他', 'type': 'expense', 'icon': '📦', 'color': '#64748B', 'is_default': 1, 'sort_order': 20},
+    {'name': '孩子', 'type': 'expense', 'icon': '🧸', 'color': '#FFA726', 'is_default': 1, 'sort_order': 22},
+    {'name': '研究', 'type': 'expense', 'icon': '🔬', 'color': '#795548', 'is_default': 1, 'sort_order': 23},
+    {'name': '礼金', 'type': 'expense', 'icon': '🧧', 'color': '#F06292', 'is_default': 1, 'sort_order': 24},
+    {'name': '办公', 'type': 'expense', 'icon': '🗂️', 'color': '#607D8B', 'is_default': 1, 'sort_order': 25},
+    {'name': '维修', 'type': 'expense', 'icon': '🔧', 'color': '#5D4037', 'is_default': 1, 'sort_order': 26},
+    {'name': '亲友', 'type': 'expense', 'icon': '🧑‍🤝‍🧑', 'color': '#388E3C', 'is_default': 1, 'sort_order': 27},
+    {'name': '酒店', 'type': 'expense', 'icon': '🏨', 'color': '#8B4513', 'is_default': 1, 'sort_order': 28},
+    {'name': '出去浪', 'type': 'expense', 'icon': '🌊', 'color': '#0288D1', 'is_default': 1, 'sort_order': 29},
+    {'name': '其他', 'type': 'expense', 'icon': '📦', 'color': '#64748B', 'is_default': 1, 'sort_order': 999},
+  ];
+
+  // 收入分类（按 sort_order 升序排列，新增分类请追加在「其他」之前）
+  static const List<Map<String, Object>> _defaultIncomeCategories = [
     {'name': '工资', 'type': 'income', 'icon': '💰', 'color': '#10B981', 'is_default': 1, 'sort_order': 1},
     {'name': '奖金', 'type': 'income', 'icon': '🎁', 'color': '#F59E0B', 'is_default': 1, 'sort_order': 2},
     {'name': '理财', 'type': 'income', 'icon': '📈', 'color': '#3B82F6', 'is_default': 1, 'sort_order': 3},
     {'name': '兼职', 'type': 'income', 'icon': '💼', 'color': '#8B5CF6', 'is_default': 1, 'sort_order': 4},
     {'name': '补助', 'type': 'income', 'icon': '🎗️', 'color': '#06B6D4', 'is_default': 1, 'sort_order': 5},
     {'name': '补偿', 'type': 'income', 'icon': '💵', 'color': '#84CC16', 'is_default': 1, 'sort_order': 6},
+    {'name': '其他', 'type': 'income', 'icon': '📥', 'color': '#64748B', 'is_default': 1, 'sort_order': 999},
+  ];
+
+  // 全量默认分类（支出 + 收入合并），供数据库初始化和外部使用
+  static const List<Map<String, Object>> defaultCategories = [
+    ..._defaultExpenseCategories,
+    ..._defaultIncomeCategories,
   ];
 
   Future<Database> get database async {
@@ -189,46 +209,130 @@ class DBHelper {
     await insertDefaultCategories(db);
   }
 
+  // 确保 categories 表与当前应用的 defaultCategories 保持一致：
+  // 1) 去重  2) 清理非白名单分类（并把其引用的交易迁到「其他」） 3) 缺的补、有的同步字段
   Future<void> ensureDefaultCategories(Database db) async {
-    final expenseCount = Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM categories WHERE type = ?', ['expense']),
-        ) ??
-        0;
-    final incomeCount = Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM categories WHERE type = ?', ['income']),
-        ) ??
-        0;
-
-    // 清理历史错误数据：旧版本曾把「补助/补偿」作为支出分类，现改为收入分类
+    // ---------- 1) 清理历史错误数据 ----------
+    // 旧版本曾把「补助/补偿」作为支出分类，现已改为收入分类
     await db.delete(
       'categories',
       where: 'name IN (?, ?) AND type = ?',
       whereArgs: ['补助', '补偿', 'expense'],
     );
 
-    // 完全空表 → 批量插入
-    if (expenseCount == 0) {
-      await insertDefaultCategories(db, type: 'expense');
-    }
-    if (incomeCount == 0) {
-      await insertDefaultCategories(db, type: 'income');
+    // ---------- 2) 去重：同 name+type 保留 id 最小那条 ----------
+    final duplicateCheck = await db.rawQuery('''
+      SELECT name, type, MIN(id) AS keep_id
+      FROM categories
+      GROUP BY name, type
+      HAVING COUNT(*) > 1
+    ''');
+    for (final row in duplicateCheck) {
+      await db.delete(
+        'categories',
+        where: 'name = ? AND type = ? AND id != ?',
+        whereArgs: [row['name'] as String, row['type'] as String, row['keep_id'] as int],
+      );
     }
 
-    // 已有数据 → 逐个检查缺失的分类并插入（用于后续新增默认分类时的兼容）
-    if (expenseCount > 0 || incomeCount > 0) {
-      for (final category in defaultCategories) {
-        final name = category['name'] as String;
-        final type = category['type'] as String;
-        final existing = Sqflite.firstIntValue(
-              await db.rawQuery(
-                'SELECT COUNT(*) FROM categories WHERE name = ? AND type = ?',
-                [name, type],
-              ),
-            ) ??
-            0;
-        if (existing == 0) {
-          await db.insert('categories', category);
-        }
+    // ---------- 3) 白名单集合：当前应用允许的所有 name+type ----------
+    final allowedKeys = <String>{
+      for (final c in defaultCategories) '${c['name']}__${c['type']}',
+    };
+
+    // ---------- 4) 先确保「其他」分类存在（供后续非法分类的交易重定向用） ----------
+    for (final type in const ['expense', 'income']) {
+      const name = '其他';
+      final existing = await db.query(
+        'categories',
+        where: 'name = ? AND type = ?',
+        whereArgs: [name, type],
+        limit: 1,
+      );
+      if (existing.isEmpty) {
+        final defaultList =
+            type == 'expense' ? _defaultExpenseCategories : _defaultIncomeCategories;
+        final fallback = defaultList.firstWhere((c) => c['name'] == name,
+            orElse: () => defaultList.last);
+        await db.insert('categories', fallback);
+      }
+    }
+
+    // ---------- 5) 查询「其他」分类的 id（按 type） ----------
+    final fallbackRows = await db.query(
+      'categories',
+      where: 'name = ? AND (type = ? OR type = ?)',
+      whereArgs: ['其他', 'expense', 'income'],
+    );
+    final fallbackByType = <String, int>{};
+    for (final r in fallbackRows) {
+      fallbackByType[r['type'] as String] = r['id'] as int;
+    }
+
+    // ---------- 6) 清理非白名单分类 ----------
+    // 先把引用了这些分类的交易迁到「其他」，再删除分类本身
+    final existingCategories = await db.rawQuery('SELECT id, name, type FROM categories');
+    final toDeleteIds = <int>[];
+    final redirects = <int, int>{}; // 旧 category_id → 其他分类 id
+
+    for (final row in existingCategories) {
+      final key = '${row['name']}__${row['type']}';
+      if (allowedKeys.contains(key)) continue;
+
+      final oldId = row['id'] as int;
+      final type = row['type'] as String;
+      final fallbackId = fallbackByType[type == 'income' ? 'income' : 'expense'];
+      if (fallbackId != null && fallbackId != oldId) {
+        redirects[oldId] = fallbackId;
+      }
+      toDeleteIds.add(oldId);
+    }
+
+    // 6a) 重定向交易记录
+    for (final entry in redirects.entries) {
+      await db.update(
+        'transactions',
+        {'category_id': entry.value},
+        where: 'category_id = ?',
+        whereArgs: [entry.key],
+      );
+    }
+
+    // 6b) 删除非法分类
+    if (toDeleteIds.isNotEmpty) {
+      final placeholders = List.filled(toDeleteIds.length, '?').join(',');
+      await db.delete(
+        'categories',
+        where: 'id IN ($placeholders)',
+        whereArgs: toDeleteIds,
+      );
+    }
+
+    // ---------- 7) 确保白名单分类全部存在，且 icon/color/sort_order 与当前应用同步 ----------
+    // 用 name+type 做唯一键：缺的就 insert，已有的就 update 字段
+    for (final category in defaultCategories) {
+      final name = category['name'] as String;
+      final type = category['type'] as String;
+      final rows = await db.query(
+        'categories',
+        where: 'name = ? AND type = ?',
+        whereArgs: [name, type],
+        limit: 1,
+      );
+      if (rows.isEmpty) {
+        await db.insert('categories', category);
+      } else {
+        await db.update(
+          'categories',
+          {
+            'icon': category['icon'],
+            'color': category['color'],
+            'sort_order': category['sort_order'],
+            'is_default': 1,
+          },
+          where: 'id = ?',
+          whereArgs: [rows.first['id']],
+        );
       }
     }
   }

@@ -7,7 +7,7 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   // 软件版本号 — 每次发版时这里和 pubspec.yaml / build.gradle / Info.plist 同步更新
-  static const String appVersion = '1.1.0';
+  static const String appVersion = '1.1.3';
   static const int appBuild = 2;
 
   @override

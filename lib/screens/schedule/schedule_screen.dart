@@ -17,6 +17,9 @@ class ScheduleScreen extends StatefulWidget {
 class _ScheduleScreenState extends State<ScheduleScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  // 用于水平滑动切换月份
+  double _dragStartX = 0;
+  static const double _minSwipeDistance = 60;
 
   @override
   void initState() {
@@ -193,7 +196,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       children: [
         _buildWeekdaysHeader(),
         Expanded(
-          child: _buildCalendarGrid(scheduleProvider),
+          child: GestureDetector(
+            onHorizontalDragStart: (details) {
+              _dragStartX = details.globalPosition.dx;
+            },
+            onHorizontalDragEnd: (details) {
+              final dx = details.globalPosition.dx - _dragStartX;
+              if (dx > _minSwipeDistance) {
+                _changeMonth(-1); // 右滑 → 上一月
+              } else if (dx < -_minSwipeDistance) {
+                _changeMonth(1); // 左滑 → 下一月
+              }
+            },
+            child: _buildCalendarGrid(scheduleProvider),
+          ),
         ),
       ],
     );

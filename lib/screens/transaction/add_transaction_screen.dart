@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
+import '../../models/category.dart';
 import '../../models/transaction.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/transaction_provider.dart';
@@ -79,13 +81,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             final categories = _type == 'income'
                 ? categoryProvider.incomeCategories
                 : categoryProvider.expenseCategories;
-            
+
             debugPrint('Showing ${categories.length} categories for $_type');
-            
+
             if (categoryProvider.isLoading) {
               return const Center(child: CircularProgressIndicator());
             }
-            
+
             if (categories.isEmpty) {
               return const Center(
                 child: Text('没有可用的分类'),
@@ -103,51 +105,55 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               });
             }
 
-            return SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildTypeButton('支出', 'expense'),
-                        const SizedBox(width: 16),
-                        _buildTypeButton('收入', 'income'),
-                      ],
-                    ),
+            // ←←← 核心变化：整个布局由「整页滚动」改为「固定三段式」
+            // 顶部（类型切换 + 金额） + 中间卡片（分类独立滚动 + 备注固定） + 底部保存按钮
+            return Column(
+              children: [
+                // ========== 顶部：类型切换 ==========
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildTypeButton('支出', 'expense'),
+                      const SizedBox(width: 16),
+                      _buildTypeButton('收入', 'income'),
+                    ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                    child: TextField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
+                ),
+                // ========== 顶部：金额输入 ==========
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  child: TextField(
+                    controller: _amountController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: '0.00',
+                      hintStyle: TextStyle(
                         fontSize: 40,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: AppColors.textTertiary,
                       ),
-                      decoration: const InputDecoration(
-                        hintText: '0.00',
-                        hintStyle: TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textTertiary,
-                        ),
-                        border: InputBorder.none,
-                        prefixText: '¥',
-                        prefixStyle: TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textSecondary,
-                        ),
+                      border: InputBorder.none,
+                      prefixText: '¥',
+                      prefixStyle: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ),
-                  Container(
-                    margin: const EdgeInsets.all(16),
+                ),
+                // ========== 中间卡片：分类（独立滚动） + 备注（固定） ==========
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
@@ -155,65 +161,39 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 5,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 0.9,
+                        // 提示：长按可拖拽
+                        const Padding(
+                          padding: EdgeInsets.only(left: 4, top: 2, bottom: 8),
+                          child: Text(
+                            '💡 长按分类可拖拽调整顺序',
+                            style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
                           ),
-                          itemCount: categories.length,
-                          itemBuilder: (context, index) {
-                            final category = categories[index];
-                            final isSelected = category.id == _selectedCategoryId;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedCategoryId = category.id;
-                                });
-                              },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')).withValues(alpha: 0.1)
-                                      : AppColors.background,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: isSelected
-                                      ? Border.all(
-                                          color: Color(int.parse('0xFF${category.color.replaceFirst('#', '')}')),
-                                          width: 2,
-                                        )
-                                      : null,
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      category.icon,
-                                      style: const TextStyle(fontSize: 22),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      category.name,
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+                        ),
+                        // --- 分类区：独立滚动 ---
+                        Expanded(
+                          child: GridView.builder(
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 5,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              childAspectRatio: 0.9,
+                            ),
+                            itemCount: categories.length,
+                            itemBuilder: (context, index) {
+                              return _buildDraggableCategoryTile(
+                                context,
+                                category: categories[index],
+                                index: index,
+                                total: categories.length,
+                                categoryProvider: categoryProvider,
+                              );
+                            },
+                          ),
                         ),
                         const Divider(),
                         const SizedBox(height: 10),
+                        // --- 备注区：固定位置，不随分类滚动 ---
                         _buildFormField(
                           icon: Icons.label_outlined,
                           hint: '分类备注',
@@ -232,30 +212,162 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           hint: '备注',
                           controller: _noteController,
                         ),
+                        const SizedBox(height: 6),
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    child: ElevatedButton(
-                      onPressed: _saveTransaction,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 56),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        '保存',
-                        style: TextStyle(fontSize: 18),
+                ),
+                // ========== 底部：保存按钮 ==========
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: ElevatedButton(
+                    onPressed: _saveTransaction,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
+                    child: const Text(
+                      '保存',
+                      style: TextStyle(fontSize: 18),
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             );
           },
         ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // 长按可拖拽的分类格子（点击选中 + 长按拖拽交换）
+  // ============================================================
+  Widget _buildDraggableCategoryTile(
+    BuildContext context, {
+    required Category category,
+    required int index,
+    required int total,
+    required CategoryProvider categoryProvider,
+  }) {
+    final isSelected = category.id == _selectedCategoryId;
+    final Color tileColor =
+        Color(int.parse('0xFF${category.color.replaceFirst('#', '')}'));
+
+    final tile = Container(
+      key: ValueKey('cat_${category.id}_$index'),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? tileColor.withValues(alpha: 0.12)
+            : AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: isSelected
+            ? Border.all(color: tileColor, width: 2)
+            : null,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            category.icon,
+            style: const TextStyle(fontSize: 22),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            category.name,
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.textSecondary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+
+    return LongPressDraggable<int>(
+      data: index,
+      dragAnchorStrategy: pointerDragAnchorStrategy,
+      feedback: Transform.scale(
+        scale: 1.15,
+        child: Material(
+          color: Colors.transparent,
+          child: tile,
+        ),
+      ),
+      childWhenDragging: Opacity(
+        opacity: 0.35,
+        child: tile,
+      ),
+      onDragStarted: () {
+        // 轻震动反馈（可选）
+        HapticFeedback.selectionClick();
+      },
+      child: DragTarget<int>(
+        onWillAcceptWithDetails: (details) {
+          return details.data != index;
+        },
+        onAcceptWithDetails: (details) async {
+          await categoryProvider.reorderCategories(details.data, index, _type);
+        },
+        builder: (context, candidateData, rejectedData) {
+          final isHovering = candidateData.isNotEmpty;
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedCategoryId = category.id;
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              key: ValueKey('cat_${category.id}_$index'),
+              decoration: BoxDecoration(
+                color: isHovering
+                    ? tileColor.withValues(alpha: 0.25)
+                    : (isSelected
+                        ? tileColor.withValues(alpha: 0.12)
+                        : AppColors.background),
+                borderRadius: BorderRadius.circular(10),
+                border: isSelected
+                    ? Border.all(color: tileColor, width: 2)
+                    : (isHovering
+                        ? Border.all(color: tileColor.withValues(alpha: 0.6), width: 2)
+                        : null),
+                boxShadow: isHovering
+                    ? [
+                        BoxShadow(
+                          color: tileColor.withValues(alpha: 0.15),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        )
+                      ]
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    category.icon,
+                    style: const TextStyle(fontSize: 22),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    category.name,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

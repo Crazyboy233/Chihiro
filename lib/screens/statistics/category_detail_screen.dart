@@ -214,8 +214,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           // 当日每笔记录
           ...dayList.asMap().entries.map((entry) {
             final tx = entry.value;
-            final note = tx['note'] as String?;
+            final categoryNote = tx['categoryNote'] as String;
+            final personalNote = tx['note'] as String;
             final lastOfDay = entry.key == dayList.length - 1;
+            final hasAnyNote = categoryNote.isNotEmpty || personalNote.isNotEmpty;
 
             return Padding(
               padding: EdgeInsets.fromLTRB(16, 8, 16, lastOfDay ? 16 : 8),
@@ -225,16 +227,32 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (note != null && note.isNotEmpty)
-                          Text(
-                            note,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textPrimary,
-                              height: 1.3,
+                        if (hasAnyNote) ...[
+                          // 分类备注（用分类色 + 加粗，突出显示）
+                          if (categoryNote.isNotEmpty)
+                            Text(
+                              categoryNote,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: categoryColor,
+                                fontWeight: FontWeight.w600,
+                                height: 1.3,
+                              ),
                             ),
-                          )
-                        else
+                          // 个人备注（普通文本）
+                          if (personalNote.isNotEmpty)
+                            Padding(
+                              padding: EdgeInsets.only(top: categoryNote.isNotEmpty ? 4 : 0),
+                              child: Text(
+                                personalNote,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textPrimary,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                        ] else
                           const Text(
                             '无备注',
                             style: TextStyle(
@@ -304,7 +322,8 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
         'id': t.id,
         'date': t.date,
         'amount': t.amount,
-        'note': t.note ?? t.categoryNote ?? '',
+        'categoryNote': t.categoryNote ?? '',
+        'note': t.note ?? '',
         'created_at': t.createdAt,
       };
     }).toList();

@@ -253,15 +253,18 @@ class _HabitScreenState extends State<HabitScreen> {
     final hasCompletedHabits = completedToday > 0;
     final completionRate = totalGoals > 0 ? completedToday / totalGoals : 0.0;
 
-    // 打卡背景颜色
+    // 打卡背景颜色：基于当天第一个目标的颜色（整体视图）
     Color backgroundColor;
+    final goalColor = goalsToday.isNotEmpty
+        ? Color(int.parse('0xFF${goalsToday.first.color.replaceFirst('#', '')}'))
+        : const Color(0xFF10B981);
     if (hasCompletedHabits) {
       if (completionRate == 1.0) {
-        backgroundColor = Colors.green[400]!;
+        backgroundColor = goalColor;
       } else if (completionRate >= 0.5) {
-        backgroundColor = Colors.lightGreen[300]!;
+        backgroundColor = goalColor.withValues(alpha: 0.55);
       } else {
-        backgroundColor = Colors.lightGreen[100]!;
+        backgroundColor = goalColor.withValues(alpha: 0.18);
       }
     } else {
       backgroundColor = Colors.white;
@@ -496,6 +499,9 @@ class _HabitScreenState extends State<HabitScreen> {
     DateTime date,
   ) {
     final color = Color(int.parse('0xFF${goal.color.replaceFirst('#', '')}'));
+    final completedBg = color.withValues(alpha: 0.12);
+    final completedBorder = color.withValues(alpha: 0.8);
+    final completedText = color;
 
     return GestureDetector(
       onTap: () {
@@ -507,10 +513,10 @@ class _HabitScreenState extends State<HabitScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isCompleted ? Colors.green[50] : Colors.white,
+          color: isCompleted ? completedBg : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isCompleted ? Colors.green[300]! : Colors.grey[200]!,
+            color: isCompleted ? completedBorder : Colors.grey[200]!,
             width: 2,
           ),
         ),
@@ -520,7 +526,7 @@ class _HabitScreenState extends State<HabitScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: isCompleted ? Colors.green[100] : color.withValues(alpha: 0.1),
+                color: isCompleted ? completedBg : color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -540,7 +546,7 @@ class _HabitScreenState extends State<HabitScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: isCompleted ? Colors.green[700] : Colors.black87,
+                      color: isCompleted ? completedText : Colors.black87,
                       decoration: isCompleted ? TextDecoration.lineThrough : null,
                     ),
                   ),
@@ -549,7 +555,7 @@ class _HabitScreenState extends State<HabitScreen> {
                     _getFrequencyLabel(goal),
                     style: TextStyle(
                       fontSize: 13,
-                      color: isCompleted ? Colors.green[500] : Colors.grey[500],
+                      color: isCompleted ? completedText.withValues(alpha: 0.75) : Colors.grey[500],
                     ),
                   ),
                   if (goal.description != null && goal.description!.isNotEmpty)
@@ -559,7 +565,7 @@ class _HabitScreenState extends State<HabitScreen> {
                         goal.description!,
                         style: TextStyle(
                           fontSize: 13,
-                          color: isCompleted ? Colors.green[500] : Colors.grey[600],
+                          color: isCompleted ? completedText.withValues(alpha: 0.75) : Colors.grey[600],
                         ),
                       ),
                     ),
@@ -576,10 +582,10 @@ class _HabitScreenState extends State<HabitScreen> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: isCompleted ? Colors.green : Colors.white,
+                  color: isCompleted ? color : Colors.white,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isCompleted ? Colors.green : Colors.grey[400]!,
+                    color: isCompleted ? color : Colors.grey[400]!,
                     width: 2,
                   ),
                 ),

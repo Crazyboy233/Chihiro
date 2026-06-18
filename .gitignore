@@ -65,3 +65,30 @@ android/key.properties
 *.jks
 *.keystore
 *.p12
+
+# 忽略 Windows 编译产物
+windows/runner/Debug/
+windows/runner/Release/
+windows/runner/x64/
+windows/**/build/
+windows/**/ipch/
+windows/.vs/
+windows/*.vcxproj
+windows/*.vcxproj.user
+windows/*.sln
+windows/*.suo
+windows/*.pdb
+windows/*.obj
+
+# Android 本地缓存&编译产物
+android/.gradle/
+android/app/build/
+android/captures/
+android/local.properties        # 本地SDK路径，每人环境不同，绝对不提交
+android/app/GeneratedPluginRegistrant.java  # 插件自动生成代码
+android/gradlew
+android/gradlew.bat
+android/key.properties         # 签名密码配置（敏感信息）
+*.jks                          # 签名证书文件，不要上传仓库
+android/app/.cxx/
+android/app/.externalNativeBuild/

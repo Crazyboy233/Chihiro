@@ -93,9 +93,9 @@ class TransactionProvider extends ChangeNotifier {
     loadTransactions();
   }
 
-  void setDateRangeType(String type) {
+  void setDateRangeType(String type, {bool resetToCurrent = true}) {
     _dateRangeType = type;
-    if (type == 'month' || type == 'week' || type == 'year') {
+    if (resetToCurrent && (type == 'month' || type == 'week' || type == 'year')) {
       _currentDate = qx.DateUtils.getBeijingTime();
     }
     loadTransactions();

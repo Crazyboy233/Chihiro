@@ -14,35 +14,33 @@ class ScheduleScreen extends StatefulWidget {
   State<ScheduleScreen> createState() => _ScheduleScreenState();
 }
 
-class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProviderStateMixin {
+class _ScheduleScreenState extends State<ScheduleScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  // 用于水平滑动切换月份
-  double _dragStartX = 0;
-  static const double _minSwipeDistance = 60;
-  // 滑动动画
-  late AnimationController _slideController;
-  late Animation<Offset> _slideAnimation;
-  bool _isAnimating = false;
+  late final PageController _pageController;
+  late final DateTime _baseMonth;
+  static const int _initialPage = 10000;
+  int _currentPage = _initialPage;
+
+  DateTime _monthForPage(int page) {
+    final delta = page - _initialPage;
+    return DateTime(_baseMonth.year, _baseMonth.month + delta, 1);
+  }
+
+  int _pageForMonth(DateTime month) {
+    final monthsDiff = (month.year - _baseMonth.year) * 12 + (month.month - _baseMonth.month);
+    return _initialPage + monthsDiff;
+  }
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 280),
-      vsync: this,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    _baseMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
+    _focusedDay = _baseMonth;
+    _pageController = PageController(initialPage: _currentPage);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await HolidayService().ensureInitialized();
-      // 不阻塞地尝试在线刷新（可选）
       try {
         HolidayService().tryRefreshOnline();
       } catch (_) {}
@@ -55,13 +53,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
 
   @override
   void dispose() {
-    _slideController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
-  void _loadData() {
-    final firstDay = DateTime(_focusedDay.year, _focusedDay.month, 1);
-    final lastDay = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
+  void _loadDataForMonth(DateTime month) {
+    final firstDay = DateTime(month.year, month.month, 1);
+    final lastDay = DateTime(month.year, month.month + 1, 0);
 
     context.read<ScheduleProvider>().loadSchedules(
       DateTime(firstDay.year, firstDay.month - 1, 1),
@@ -69,78 +67,44 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
     );
   }
 
-  Future<void> _animateToPreviousMonth() async {
-    if (_isAnimating) return;
-    _isAnimating = true;
-
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(1.0, 0.0),
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-    _slideController.forward(from: 0);
-    await Future.delayed(const Duration(milliseconds: 140));
-    _changeMonth(-1);
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(-1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-    _slideController.value = 0;
-    _slideController.forward();
-    await _slideController.forward().orCancel;
-    _isAnimating = false;
+  void _loadData() {
+    _loadDataForMonth(_focusedDay);
   }
 
-  Future<void> _animateToNextMonth() async {
-    if (_isAnimating) return;
-    _isAnimating = true;
+  void _onPageChanged(int page) {
+    _currentPage = page;
+    final newMonth = _monthForPage(page);
+    if (newMonth.year == _focusedDay.year && newMonth.month == _focusedDay.month) return;
+    setState(() {
+      _focusedDay = newMonth;
+    });
+    _loadDataForMonth(newMonth);
+  }
 
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(-1.0, 0.0),
-    ).animate(CurvedAnimation(
-      parent: _slideController,
+  void _goToPreviousMonth() {
+    _pageController.previousPage(
+      duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
-    ));
-    _slideController.forward(from: 0);
-    await Future.delayed(const Duration(milliseconds: 140));
-    _changeMonth(1);
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
+    );
+  }
+
+  void _goToNextMonth() {
+    _pageController.nextPage(
+      duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
-    ));
-    _slideController.value = 0;
-    _slideController.forward();
-    await _slideController.forward().orCancel;
-    _isAnimating = false;
+    );
   }
 
   // ---------- 月份/年份导航 ----------
 
-  void _changeMonth(int delta) {
-    setState(() {
-      _focusedDay = DateTime(
-        _focusedDay.year,
-        _focusedDay.month + delta,
-        1,
-      );
-    });
-    _loadData();
-  }
-
   void _jumpTo(int year, int month) {
-    setState(() {
-      _focusedDay = DateTime(year, month, 1);
-    });
-    _loadData();
+    final targetMonth = DateTime(year, month, 1);
+    final targetPage = _pageForMonth(targetMonth);
+    _pageController.animateToPage(
+      targetPage,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
     Navigator.of(context).pop();
   }
 
@@ -225,7 +189,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
               // 上个月
               IconButton(
                 icon: Icon(Icons.chevron_left, color: Colors.grey[700], size: 28),
-                onPressed: () => _animateToPreviousMonth(),
+                onPressed: () => _goToPreviousMonth(),
               ),
               const Spacer(),
               // 标题（可点击，弹出年月选择器）
@@ -252,7 +216,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
               // 下个月
               IconButton(
                 icon: Icon(Icons.chevron_right, color: Colors.grey[700], size: 28),
-                onPressed: () => _animateToNextMonth(),
+                onPressed: () => _goToNextMonth(),
               ),
               // 搜索
               IconButton(
@@ -271,22 +235,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
       children: [
         _buildWeekdaysHeader(),
         Expanded(
-          child: GestureDetector(
-            onHorizontalDragStart: (details) {
-              _dragStartX = details.globalPosition.dx;
+          child: PageView.builder(
+            controller: _pageController,
+            physics: const PageScrollPhysics(),
+            onPageChanged: _onPageChanged,
+            itemBuilder: (context, index) {
+              final month = _monthForPage(index);
+              return _buildCalendarGrid(scheduleProvider, month);
             },
-            onHorizontalDragEnd: (details) {
-              final dx = details.globalPosition.dx - _dragStartX;
-              if (dx > _minSwipeDistance) {
-                _animateToPreviousMonth(); // 右滑 → 上一月
-              } else if (dx < -_minSwipeDistance) {
-                _animateToNextMonth(); // 左滑 → 下一月
-              }
-            },
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: _buildCalendarGrid(scheduleProvider),
-            ),
           ),
         ),
       ],
@@ -321,8 +277,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildCalendarGrid(ScheduleProvider scheduleProvider) {
-    final days = _generateCalendarDays();
+  Widget _buildCalendarGrid(ScheduleProvider scheduleProvider, DateTime month) {
+    final days = _generateCalendarDays(month);
     final weekCount = (days.length / 7).ceil();
     
     return LayoutBuilder(
@@ -333,7 +289,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
           children: List.generate(weekCount, (weekIndex) {
             final weekDays = days.skip(weekIndex * 7).take(7).toList();
             return Expanded(
-              child: _buildWeekRow(weekDays, scheduleProvider, rowHeight, weekIndex),
+              child: _buildWeekRow(weekDays, scheduleProvider, rowHeight, weekIndex, month),
             );
           }),
         );
@@ -341,9 +297,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
     );
   }
 
-  List<DateTime> _generateCalendarDays() {
-    final firstDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
-    final lastDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
+  List<DateTime> _generateCalendarDays(DateTime month) {
+    final firstDayOfMonth = DateTime(month.year, month.month, 1);
+    final lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
     
     var currentDay = firstDayOfMonth;
     while (currentDay.weekday != DateTime.monday) {
@@ -369,6 +325,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
     ScheduleProvider scheduleProvider,
     double rowHeight,
     int weekIndex,
+    DateTime currentMonth,
   ) {
     final weekNumber = _getWeekNumber(weekDays.first);
     return Container(
@@ -379,9 +336,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
         children: weekDays.asMap().entries.map((entry) {
           final index = entry.key;
           final day = entry.value;
-          final showWeekNumber = index == 0; // 只在周一格子显示周数
+          final showWeekNumber = index == 0;
           return Expanded(
-            child: _buildDayCell(day, scheduleProvider, rowHeight,
+            child: _buildDayCell(day, scheduleProvider, rowHeight, currentMonth,
                 weekNumber: showWeekNumber ? weekNumber : null),
           );
         }).toList(),
@@ -392,10 +349,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProvid
   Widget _buildDayCell(
     DateTime day,
     ScheduleProvider scheduleProvider,
-    double rowHeight, {
+    double rowHeight,
+    DateTime currentMonth, {
     int? weekNumber,
   }) {
-    final isCurrentMonth = day.month == _focusedDay.month;
+    final isCurrentMonth = day.month == currentMonth.month && day.year == currentMonth.year;
     final isWeekend = day.weekday == DateTime.sunday || day.weekday == DateTime.saturday;
     final isToday = isSameDay(day, DateTime.now());
     final isSelected = _selectedDay != null && isSameDay(day, _selectedDay);

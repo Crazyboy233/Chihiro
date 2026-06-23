@@ -16,30 +16,75 @@ class StatisticsScreen extends StatefulWidget {
   State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerProviderStateMixin {
+class _StatisticsScreenState extends State<StatisticsScreen> {
   String _type = 'expense';
-  // 用于水平滑动切换日期范围
-  double _dragStartX = 0;
-  static const double _minSwipeDistance = 60;
-  // 滑动动画
-  late AnimationController _slideController;
-  late Animation<Offset> _slideAnimation;
-  bool _isAnimating = false;
+  late final PageController _pageController;
+  late DateTime _baseDate;
+  static const int _initialPage = 10000;
+  int _currentPage = _initialPage;
+  final Map<String, Map<String, double>> _pageCache = {};
+
+  DateTime _dateForPage(int page) {
+    final delta = page - _initialPage;
+    final type = context.read<TransactionProvider>().dateRangeType;
+    switch (type) {
+      case 'week':
+        return _baseDate.add(Duration(days: 7 * delta));
+      case 'year':
+        return DateTime(_baseDate.year + delta, _baseDate.month);
+      case 'month':
+      default:
+        return DateTime(_baseDate.year, _baseDate.month + delta);
+    }
+  }
+
+  DateTimeRange _rangeForDate(DateTime date, String type) {
+    switch (type) {
+      case 'week':
+        return DateTimeRange(
+          start: qx.DateUtils.getStartOfWeek(date),
+          end: qx.DateUtils.getEndOfWeek(date),
+        );
+      case 'year':
+        return DateTimeRange(
+          start: qx.DateUtils.getStartOfYear(date),
+          end: qx.DateUtils.getEndOfYear(date),
+        );
+      case 'custom':
+        return context.read<TransactionProvider>().currentDateRange;
+      case 'month':
+      default:
+        return DateTimeRange(
+          start: qx.DateUtils.getStartOfMonth(date),
+          end: qx.DateUtils.getEndOfMonth(date),
+        );
+    }
+  }
+
+  String _cacheKey(int page, String type) => '${type}_$page';
+
+  Future<Map<String, double>> _getCategorySummaryForPage(int page) async {
+    final type = context.read<TransactionProvider>().dateRangeType;
+    final key = _cacheKey(page, '$type$_type');
+    if (_pageCache.containsKey(key)) {
+      return _pageCache[key]!;
+    }
+    try {
+      final date = _dateForPage(page);
+      final range = _rangeForDate(date, type);
+      final data = await DatabaseService.instance.getCategorySummary(range.start, range.end, _type);
+      _pageCache[key] = data;
+      return data;
+    } catch (e) {
+      return {};
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 280),
-      vsync: this,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    _baseDate = qx.DateUtils.getBeijingTime();
+    _pageController = PageController(initialPage: _currentPage);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<TransactionProvider>().setDateRangeType('month');
@@ -49,62 +94,45 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   @override
   void dispose() {
-    _slideController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
-  Future<void> _animateToPreviousPeriod(TransactionProvider provider) async {
-    if (_isAnimating || provider.dateRangeType == 'custom') return;
-    _isAnimating = true;
-
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(1.0, 0.0),
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-    _slideController.forward(from: 0);
-    await Future.delayed(const Duration(milliseconds: 140));
-    provider.previousPeriod();
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(-1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-    _slideController.value = 0;
-    _slideController.forward();
-    await _slideController.forward().orCancel;
-    _isAnimating = false;
+  void _onPageChanged(int page) {
+    final provider = context.read<TransactionProvider>();
+    if (provider.dateRangeType == 'custom') return;
+    _currentPage = page;
+    final newDate = _dateForPage(page);
+    provider.setDate(newDate);
   }
 
-  Future<void> _animateToNextPeriod(TransactionProvider provider) async {
-    if (_isAnimating || provider.dateRangeType == 'custom') return;
-    _isAnimating = true;
+  void _goToPrevious() {
+    final provider = context.read<TransactionProvider>();
+    if (provider.dateRangeType == 'custom') return;
+    _pageController.previousPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(-1.0, 0.0),
-    ).animate(CurvedAnimation(
-      parent: _slideController,
+  void _goToNext() {
+    final provider = context.read<TransactionProvider>();
+    if (provider.dateRangeType == 'custom') return;
+    _pageController.nextPage(
+      duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
-    ));
-    _slideController.forward(from: 0);
-    await Future.delayed(const Duration(milliseconds: 140));
-    provider.nextPeriod();
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-    _slideController.value = 0;
-    _slideController.forward();
-    await _slideController.forward().orCancel;
-    _isAnimating = false;
+    );
+  }
+
+  void _switchRangeType(String type) {
+    final provider = context.read<TransactionProvider>();
+    final currentDate = provider.currentDate;
+    _pageCache.clear();
+    provider.setDateRangeType(type, resetToCurrent: false);
+    provider.setDate(currentDate);
+    _baseDate = currentDate;
+    _currentPage = _initialPage;
+    _pageController.jumpToPage(_initialPage);
   }
 
   @override
@@ -114,62 +142,66 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       appBar: AppBar(
         title: const Text('统计'),
       ),
-      // 结构：上方内容固定，下方绿色框区域（总支出卡片以下）铺满剩余空间并响应左右滑动
       body: Consumer2<TransactionProvider, CategoryProvider>(
         builder: (context, transactionProvider, categoryProvider, child) {
           final summary = transactionProvider.summary;
           final categories = _type == 'income'
               ? categoryProvider.incomeCategories
               : categoryProvider.expenseCategories;
+          final isCustom = transactionProvider.dateRangeType == 'custom';
 
-          return FutureBuilder<Map<String, double>>(
-            future: _getCategorySummary(transactionProvider),
-            builder: (context, snapshot) {
-              final categorySummary = snapshot.data ?? {};
-
-              return Column(
-                children: [
-                  // 上方：类型选择 + 日期选择 + 总支出卡片（不响应左右滑动）
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildTypeSelector(),
-                        const SizedBox(height: 16),
-                        _buildDateRangeSelector(transactionProvider),
-                        const SizedBox(height: 20),
-                        _buildSummaryCard(summary),
-                      ],
-                    ),
-                  ),
-                  // 下方：绿色框区域，Expanded 铺满剩余空间 → 整个区域（含空白）响应左右滑动
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onHorizontalDragStart: (details) {
-                        _dragStartX = details.globalPosition.dx;
-                      },
-                      onHorizontalDragEnd: (details) {
-                        final dx = details.globalPosition.dx - _dragStartX;
-                        if (dx > _minSwipeDistance) {
-                          _animateToPreviousPeriod(transactionProvider); // 右滑 → 上一个周期
-                        } else if (dx < -_minSwipeDistance) {
-                          _animateToNextPeriod(transactionProvider); // 左滑 → 下一个周期
-                        }
-                      },
-                      child: SlideTransition(
-                        position: _slideAnimation,
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: _buildCategoryList(categories, categorySummary, transactionProvider),
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildTypeSelector(),
+                    const SizedBox(height: 16),
+                    _buildDateRangeSelector(transactionProvider),
+                    const SizedBox(height: 20),
+                    _buildSummaryCard(summary),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: isCustom
+                    ? SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: FutureBuilder<Map<String, double>>(
+                          future: _getCategorySummaryForPage(_currentPage),
+                          builder: (context, snapshot) {
+                            return _buildCategoryList(
+                                categories, snapshot.data ?? {}, transactionProvider);
+                          },
                         ),
+                      )
+                    : PageView.builder(
+                        controller: _pageController,
+                        physics: const PageScrollPhysics(),
+                        onPageChanged: _onPageChanged,
+                        itemBuilder: (context, index) {
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: FutureBuilder<Map<String, double>>(
+                              future: _getCategorySummaryForPage(index),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const SizedBox(
+                                    height: 200,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  );
+                                }
+                                return _buildCategoryList(
+                                    categories, snapshot.data ?? {}, transactionProvider);
+                              },
+                            ),
+                          );
+                        },
                       ),
-                    ),
-                  ),
-                ],
-              );
-            },
+              ),
+            ],
           );
         },
       ),
@@ -189,6 +221,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               onTap: () {
                 setState(() {
                   _type = 'expense';
+                  _pageCache.clear();
                 });
               },
               child: Container(
@@ -214,6 +247,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               onTap: () {
                 setState(() {
                   _type = 'income';
+                  _pageCache.clear();
                 });
               },
               child: Container(
@@ -270,9 +304,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    provider.setDateRangeType('week');
-                  },
+                  onTap: () => _switchRangeType('week'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
@@ -293,9 +325,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               ),
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    provider.setDateRangeType('month');
-                  },
+                  onTap: () => _switchRangeType('month'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
@@ -316,9 +346,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               ),
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    provider.setDateRangeType('year');
-                  },
+                  onTap: () => _switchRangeType('year'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
@@ -374,7 +402,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               if (provider.dateRangeType != 'custom')
                 IconButton(
                   icon: const Icon(Icons.chevron_left),
-                  onPressed: () => _animateToPreviousPeriod(provider),
+                  onPressed: _goToPrevious,
                 ),
               if (provider.dateRangeType == 'custom')
                 const SizedBox(width: 48),
@@ -392,7 +420,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               if (provider.dateRangeType != 'custom')
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
-                  onPressed: () => _animateToNextPeriod(provider),
+                  onPressed: _goToNext,
                 ),
               if (provider.dateRangeType == 'custom')
                 IconButton(
@@ -407,20 +435,27 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   Future<void> _showCustomDateRangePicker(TransactionProvider provider) async {
-    await showModalBottomSheet(
+    final now = qx.DateUtils.getBeijingTime();
+    final picked = await showDateRangePicker(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.85,
-        maxChildSize: 0.95,
-        minChildSize: 0.5,
-        builder: (context, scrollController) => _FilterDialog(
-          provider: provider,
-          scrollController: scrollController,
-        ),
-      ),
+      firstDate: DateTime(2020),
+      lastDate: now,
+      initialDateRange: provider.dateRangeType == 'custom' ? provider.currentDateRange : null,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
+    if (picked != null && mounted) {
+      _pageCache.clear();
+      provider.setCustomDateRange(picked.start, picked.end);
+    }
   }
 
   Widget _buildSummaryCard(Map<String, double> summary) {
@@ -619,330 +654,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           ),
         );
       },
-    );
-  }
-
-  Future<Map<String, double>> _getCategorySummary(TransactionProvider provider) async {
-    try {
-      final range = provider.currentDateRange;
-      return await DatabaseService.instance.getCategorySummary(range.start, range.end, _type);
-    } catch (e) {
-      return {};
-    }
-  }
-}
-
-class _FilterDialog extends StatefulWidget {
-  final TransactionProvider provider;
-  final ScrollController scrollController;
-
-  const _FilterDialog({
-    required this.provider,
-    required this.scrollController,
-  });
-
-  @override
-  State<_FilterDialog> createState() => _FilterDialogState();
-}
-
-class _FilterDialogState extends State<_FilterDialog> {
-  late int _selectedYear;
-  late int _selectedMonth;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedYear = widget.provider.currentDate.year;
-    _selectedMonth = widget.provider.currentDate.month;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final now = qx.DateUtils.getBeijingTime();
-    const minYear = 2020;
-    final maxYear = now.year;
-    const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月',
-      '七月', '八月', '九月', '十月', '十一月', '十二月'];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: CustomScrollView(
-        controller: widget.scrollController,
-        slivers: [
-          SliverToBoxAdapter(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        '筛选',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          widget.provider.resetToCurrentDate();
-                          Navigator.pop(context);
-                        },
-                        child: const Text('重置'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // 快速选择：按年
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '按年查看（$minYear 年 ~ $maxYear 年）',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: List.generate(maxYear - minYear + 1, (index) {
-                      final year = minYear + index;
-                      final isSelected = widget.provider.dateRangeType == 'year'
-                          && widget.provider.currentDate.year == year;
-                      return GestureDetector(
-                        onTap: () {
-                          widget.provider.jumpToYear(year);
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppColors.primary : AppColors.surface,
-                            borderRadius: BorderRadius.circular(22),
-                            border: isSelected
-                                ? Border.all(color: AppColors.primary)
-                                : null,
-                          ),
-                          child: Text(
-                            '$year年',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: isSelected ? Colors.white : AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // 快速选择：按年月
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '按月查看（快速跳转）',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // 年份选择
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<int>(
-                              value: _selectedYear,
-                              isExpanded: true,
-                              items: List.generate(maxYear - minYear + 1, (index) {
-                                final year = minYear + index;
-                                return DropdownMenuItem(
-                                  value: year,
-                                  child: Text(
-                                    '$year年',
-                                    style: const TextStyle(fontSize: 15),
-                                  ),
-                                );
-                              }),
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(() {
-                                    _selectedYear = value;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<int>(
-                              value: _selectedMonth,
-                              isExpanded: true,
-                              items: List.generate(12, (index) {
-                                return DropdownMenuItem(
-                                  value: index + 1,
-                                  child: Text(
-                                    monthNames[index],
-                                    style: const TextStyle(fontSize: 15),
-                                  ),
-                                );
-                              }),
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(() {
-                                    _selectedMonth = value;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        widget.provider.jumpToYearMonth(_selectedYear, _selectedMonth);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: Text(
-                        '查看 $_selectedYear 年 $_selectedMonth 月',
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // 自定义日期范围
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '自定义日期范围',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final picked = await showDateRangePicker(
-                          context: context,
-                          firstDate: DateTime(2020),
-                          lastDate: now,
-                          initialDateRange: widget.provider.dateRangeType == 'custom'
-                              ? widget.provider.currentDateRange
-                              : null,
-                          builder: (context, child) {
-                            return Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: Theme.of(context).colorScheme.copyWith(
-                                  primary: AppColors.primary,
-                                ),
-                              ),
-                              child: child!,
-                            );
-                          },
-                        );
-                        if (picked != null && mounted) {
-                          widget.provider.setCustomDateRange(picked.start, picked.end);
-                          if (mounted) {
-                            Navigator.pop(this.context);
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.surface,
-                        foregroundColor: AppColors.textPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        '选择日期范围...',
-                        style: TextStyle(fontSize: 15),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

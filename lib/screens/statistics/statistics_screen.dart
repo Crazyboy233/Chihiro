@@ -16,20 +16,95 @@ class StatisticsScreen extends StatefulWidget {
   State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> {
+class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerProviderStateMixin {
   String _type = 'expense';
   // 用于水平滑动切换日期范围
   double _dragStartX = 0;
   static const double _minSwipeDistance = 60;
+  // 滑动动画
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
+  bool _isAnimating = false;
 
   @override
   void initState() {
     super.initState();
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 280),
+      vsync: this,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<TransactionProvider>().setDateRangeType('month');
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _slideController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _animateToPreviousPeriod(TransactionProvider provider) async {
+    if (_isAnimating || provider.dateRangeType == 'custom') return;
+    _isAnimating = true;
+
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(1.0, 0.0),
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    _slideController.forward(from: 0);
+    await Future.delayed(const Duration(milliseconds: 140));
+    provider.previousPeriod();
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(-1.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    _slideController.value = 0;
+    _slideController.forward();
+    await _slideController.forward().orCancel;
+    _isAnimating = false;
+  }
+
+  Future<void> _animateToNextPeriod(TransactionProvider provider) async {
+    if (_isAnimating || provider.dateRangeType == 'custom') return;
+    _isAnimating = true;
+
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(-1.0, 0.0),
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    _slideController.forward(from: 0);
+    await Future.delayed(const Duration(milliseconds: 140));
+    provider.nextPeriod();
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    _slideController.value = 0;
+    _slideController.forward();
+    await _slideController.forward().orCancel;
+    _isAnimating = false;
   }
 
   @override
@@ -78,15 +153,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       onHorizontalDragEnd: (details) {
                         final dx = details.globalPosition.dx - _dragStartX;
                         if (dx > _minSwipeDistance) {
-                          transactionProvider.previousPeriod(); // 右滑 → 上一个周期
+                          _animateToPreviousPeriod(transactionProvider); // 右滑 → 上一个周期
                         } else if (dx < -_minSwipeDistance) {
-                          transactionProvider.nextPeriod(); // 左滑 → 下一个周期
+                          _animateToNextPeriod(transactionProvider); // 左滑 → 下一个周期
                         }
                       },
-                      // 分类列表本身支持上下滚动（当分类多时）
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _buildCategoryList(categories, categorySummary, transactionProvider),
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _buildCategoryList(categories, categorySummary, transactionProvider),
+                        ),
                       ),
                     ),
                   ),
@@ -297,7 +374,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               if (provider.dateRangeType != 'custom')
                 IconButton(
                   icon: const Icon(Icons.chevron_left),
-                  onPressed: () => provider.previousPeriod(),
+                  onPressed: () => _animateToPreviousPeriod(provider),
                 ),
               if (provider.dateRangeType == 'custom')
                 const SizedBox(width: 48),
@@ -315,7 +392,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               if (provider.dateRangeType != 'custom')
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
-                  onPressed: () => provider.nextPeriod(),
+                  onPressed: () => _animateToNextPeriod(provider),
                 ),
               if (provider.dateRangeType == 'custom')
                 IconButton(

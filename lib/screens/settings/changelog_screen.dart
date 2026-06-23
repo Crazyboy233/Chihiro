@@ -20,6 +20,16 @@ class ChangelogEntry {
 // 在这里添加新版本的更新说明
 const List<ChangelogEntry> changelog = [
   ChangelogEntry(
+    version: 'V1.1.4',
+    date: '2026-06-23',
+    newFeatures: [
+      '首页账单按日期分组，分组右侧显示当日支出总计',
+    ],
+    optimizations: [
+      '统计页和日程页左右滑动切换加入平滑过渡动画，与打卡页日历翻页效果一致',
+    ],
+  ),
+  ChangelogEntry(
     version: 'V1.1.3',
     date: '2026-06-17',
     newFeatures: [

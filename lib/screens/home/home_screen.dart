@@ -129,18 +129,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDateGroup(DateTime date, List<dynamic> transactions, CategoryProvider categoryProvider, TransactionProvider transactionProvider) {
+    final dailyExpense = transactions
+        .where((t) => t.type == 'expense')
+        .fold(0.0, (sum, t) => sum + t.amount);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 4),
-          child: Text(
-            qx.DateUtils.formatDayWithWeekday(date),
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
+          child: Row(
+            children: [
+              Text(
+                qx.DateUtils.formatDayWithWeekday(date),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Spacer(),
+              if (dailyExpense > 0)
+                Text(
+                  '支出 ¥${NumberUtils.formatCurrency(dailyExpense)}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+            ],
           ),
         ),
         ...transactions.map((transaction) {

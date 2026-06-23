@@ -14,17 +14,32 @@ class ScheduleScreen extends StatefulWidget {
   State<ScheduleScreen> createState() => _ScheduleScreenState();
 }
 
-class _ScheduleScreenState extends State<ScheduleScreen> {
+class _ScheduleScreenState extends State<ScheduleScreen> with SingleTickerProviderStateMixin {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   // 用于水平滑动切换月份
   double _dragStartX = 0;
   static const double _minSwipeDistance = 60;
+  // 滑动动画
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
+  bool _isAnimating = false;
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 280),
+      vsync: this,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await HolidayService().ensureInitialized();
       // 不阻塞地尝试在线刷新（可选）
@@ -38,6 +53,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _slideController.dispose();
+    super.dispose();
+  }
+
   void _loadData() {
     final firstDay = DateTime(_focusedDay.year, _focusedDay.month, 1);
     final lastDay = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
@@ -46,6 +67,60 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       DateTime(firstDay.year, firstDay.month - 1, 1),
       DateTime(lastDay.year, lastDay.month + 1, 0),
     );
+  }
+
+  Future<void> _animateToPreviousMonth() async {
+    if (_isAnimating) return;
+    _isAnimating = true;
+
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(1.0, 0.0),
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    _slideController.forward(from: 0);
+    await Future.delayed(const Duration(milliseconds: 140));
+    _changeMonth(-1);
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(-1.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    _slideController.value = 0;
+    _slideController.forward();
+    await _slideController.forward().orCancel;
+    _isAnimating = false;
+  }
+
+  Future<void> _animateToNextMonth() async {
+    if (_isAnimating) return;
+    _isAnimating = true;
+
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(-1.0, 0.0),
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    _slideController.forward(from: 0);
+    await Future.delayed(const Duration(milliseconds: 140));
+    _changeMonth(1);
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    _slideController.value = 0;
+    _slideController.forward();
+    await _slideController.forward().orCancel;
+    _isAnimating = false;
   }
 
   // ---------- 月份/年份导航 ----------
@@ -150,7 +225,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               // 上个月
               IconButton(
                 icon: Icon(Icons.chevron_left, color: Colors.grey[700], size: 28),
-                onPressed: () => _changeMonth(-1),
+                onPressed: () => _animateToPreviousMonth(),
               ),
               const Spacer(),
               // 标题（可点击，弹出年月选择器）
@@ -177,7 +252,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               // 下个月
               IconButton(
                 icon: Icon(Icons.chevron_right, color: Colors.grey[700], size: 28),
-                onPressed: () => _changeMonth(1),
+                onPressed: () => _animateToNextMonth(),
               ),
               // 搜索
               IconButton(
@@ -203,12 +278,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             onHorizontalDragEnd: (details) {
               final dx = details.globalPosition.dx - _dragStartX;
               if (dx > _minSwipeDistance) {
-                _changeMonth(-1); // 右滑 → 上一月
+                _animateToPreviousMonth(); // 右滑 → 上一月
               } else if (dx < -_minSwipeDistance) {
-                _changeMonth(1); // 左滑 → 下一月
+                _animateToNextMonth(); // 左滑 → 下一月
               }
             },
-            child: _buildCalendarGrid(scheduleProvider),
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: _buildCalendarGrid(scheduleProvider),
+            ),
           ),
         ),
       ],

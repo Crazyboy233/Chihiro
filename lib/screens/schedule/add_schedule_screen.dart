@@ -22,9 +22,11 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   final _descriptionController = TextEditingController();
 
   late DateTime _selectedDate;
+  late DateTime _endDate;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   bool _isAllDay = false;
+  bool _isMultiDay = false;
   String? _selectedColor;
 
   final List<String> _availableColors = [
@@ -62,24 +64,36 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         final start = DateTime.parse(s.startTime);
         _selectedDate = DateTime(start.year, start.month, start.day);
         _startTime = TimeOfDay(hour: start.hour, minute: start.minute);
-        // 全天判断：如果时间是 0:00 且没有 endTime，或 isAllDay=1
+
+        if (s.endTime != null && s.endTime!.isNotEmpty) {
+          try {
+            final e = DateTime.parse(s.endTime!);
+            final endDateOnly = DateTime(e.year, e.month, e.day);
+            if (endDateOnly != _selectedDate) {
+              _isMultiDay = true;
+              _endDate = endDateOnly;
+              _isAllDay = true;
+            } else {
+              _endDate = _selectedDate;
+              _endTime = TimeOfDay(hour: e.hour, minute: e.minute);
+            }
+          } catch (_) {}
+        } else {
+          _endDate = _selectedDate;
+        }
+
         if (s.isAllDay == 1) {
           _isAllDay = true;
           _startTime = const TimeOfDay(hour: 9, minute: 0);
         }
       } catch (_) {
         _selectedDate = DateTime.now();
+        _endDate = _selectedDate;
         _startTime = const TimeOfDay(hour: 9, minute: 0);
-      }
-
-      if (s.endTime != null && s.endTime!.isNotEmpty) {
-        try {
-          final e = DateTime.parse(s.endTime!);
-          _endTime = TimeOfDay(hour: e.hour, minute: e.minute);
-        } catch (_) {}
       }
     } else {
       _selectedDate = widget.selectedDate ?? DateTime.now();
+      _endDate = _selectedDate;
       _startTime = const TimeOfDay(hour: 9, minute: 0);
       _selectedColor = _availableColors[0];
     }
@@ -104,15 +118,17 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       _isAllDay ? 0 : (_startTime?.minute ?? 0),
     );
 
-    final endDateTime = _endTime != null && !_isAllDay
-        ? DateTime(
-            _selectedDate.year,
-            _selectedDate.month,
-            _selectedDate.day,
-            _endTime!.hour,
-            _endTime!.minute,
-          )
-        : null;
+    final endDateTime = _isMultiDay
+        ? DateTime(_endDate.year, _endDate.month, _endDate.day, 23, 59, 59)
+        : _endTime != null && !_isAllDay
+            ? DateTime(
+                _selectedDate.year,
+                _selectedDate.month,
+                _selectedDate.day,
+                _endTime!.hour,
+                _endTime!.minute,
+              )
+            : null;
 
     final schedule = Schedule(
       id: widget.schedule?.id,
@@ -120,7 +136,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       description: _descriptionController.text.isNotEmpty ? _descriptionController.text.trim() : null,
       startTime: startDateTime.toIso8601String(),
       endTime: endDateTime?.toIso8601String(),
-      isAllDay: _isAllDay ? 1 : 0,
+      isAllDay: (_isAllDay || _isMultiDay) ? 1 : 0,
       color: _selectedColor,
       createdAt: widget.schedule?.createdAt ?? now.toIso8601String(),
       updatedAt: now.toIso8601String(),
@@ -326,30 +342,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               ),
               const SizedBox(height: 14),
 
-              // 日期选择
-              _buildOptionCard(
-                icon: Icons.calendar_today,
-                title: '日期',
-                value:
-                    '${_selectedDate.year} 年 ${_selectedDate.month} 月 ${_selectedDate.day} 日',
-                valueColor: color,
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _selectedDate,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2030),
-                  );
-                  if (date != null) {
-                    setState(() {
-                      _selectedDate = date;
-                    });
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // 全天开关
+              // 跨天开关
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
@@ -365,12 +358,12 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                         color: color.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(Icons.schedule, color: color, size: 20),
+                      child: Icon(Icons.date_range, color: color, size: 20),
                     ),
                     const SizedBox(width: 14),
                     const Expanded(
                       child: Text(
-                        '全天',
+                        '跨天',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
@@ -378,12 +371,15 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       ),
                     ),
                     Switch(
-                      value: _isAllDay,
+                      value: _isMultiDay,
                       activeTrackColor: color.withValues(alpha: 0.5),
                       activeThumbColor: color,
                       onChanged: (value) {
                         setState(() {
-                          _isAllDay = value;
+                          _isMultiDay = value;
+                          if (value) {
+                            _isAllDay = true;
+                          }
                         });
                       },
                     ),
@@ -391,6 +387,121 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+
+              // 日期选择
+              if (_isMultiDay) ...[
+                _buildOptionCard(
+                  icon: Icons.calendar_today,
+                  title: '开始日期',
+                  value:
+                      '${_selectedDate.year} 年 ${_selectedDate.month} 月 ${_selectedDate.day} 日',
+                  valueColor: color,
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
+                    if (date != null) {
+                      setState(() {
+                        _selectedDate = date;
+                        if (_endDate.isBefore(date)) {
+                          _endDate = date;
+                        }
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildOptionCard(
+                  icon: Icons.calendar_today,
+                  title: '结束日期',
+                  value:
+                      '${_endDate.year} 年 ${_endDate.month} 月 ${_endDate.day} 日',
+                  valueColor: color,
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _endDate,
+                      firstDate: _selectedDate,
+                      lastDate: DateTime(2030),
+                    );
+                    if (date != null) {
+                      setState(() {
+                        _endDate = date;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+              ] else ...[
+                _buildOptionCard(
+                  icon: Icons.calendar_today,
+                  title: '日期',
+                  value:
+                      '${_selectedDate.year} 年 ${_selectedDate.month} 月 ${_selectedDate.day} 日',
+                  valueColor: color,
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
+                    if (date != null) {
+                      setState(() {
+                        _selectedDate = date;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // 全天开关
+              if (!_isMultiDay)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.schedule, color: color, size: 20),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Text(
+                          '全天',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Switch(
+                        value: _isAllDay,
+                        activeTrackColor: color.withValues(alpha: 0.5),
+                        activeThumbColor: color,
+                        onChanged: (value) {
+                          setState(() {
+                            _isAllDay = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              if (!_isMultiDay) const SizedBox(height: 12),
 
               // 时间选择
               if (!_isAllDay) ...[

@@ -328,20 +328,103 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     DateTime currentMonth,
   ) {
     final weekNumber = _getWeekNumber(weekDays.first);
+    final multiDaySchedules = scheduleProvider.getMultiDaySchedulesForWeek(weekDays);
+
+    // 为每个跨天日程计算在本周内的起止列
+    final barInfos = <_MultiDayBarInfo>[];
+    for (final schedule in multiDaySchedules) {
+      final startDateStr = schedule.startTime.split('T')[0];
+      final endDateStr = schedule.endTime!.split('T')[0];
+      int? startCol;
+      int? endCol;
+      for (int i = 0; i < weekDays.length; i++) {
+        final dayStr = weekDays[i].toIso8601String().split('T')[0];
+        if (dayStr == startDateStr) startCol = i;
+        if (dayStr == endDateStr) endCol = i;
+      }
+      startCol ??= 0;
+      endCol ??= weekDays.length - 1;
+      barInfos.add(_MultiDayBarInfo(
+        schedule: schedule,
+        startCol: startCol,
+        endCol: endCol,
+      ));
+    }
+
     return Container(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: Colors.grey[200]!, width: 0.5)),
       ),
-      child: Row(
-        children: weekDays.asMap().entries.map((entry) {
-          final index = entry.key;
-          final day = entry.value;
-          final showWeekNumber = index == 0;
-          return Expanded(
-            child: _buildDayCell(day, scheduleProvider, rowHeight, currentMonth,
-                weekNumber: showWeekNumber ? weekNumber : null),
-          );
-        }).toList(),
+      child: Stack(
+        children: [
+          Row(
+            children: weekDays.asMap().entries.map((entry) {
+              final index = entry.key;
+              final day = entry.value;
+              final showWeekNumber = index == 0;
+              return Expanded(
+                child: _buildDayCell(day, scheduleProvider, rowHeight, currentMonth,
+                    weekNumber: showWeekNumber ? weekNumber : null),
+              );
+            }).toList(),
+          ),
+          if (barInfos.isNotEmpty)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cellW = constraints.maxWidth / 7;
+                const barTop = 28.0;
+                const barHeight = 22.0;
+                const barPadding = 4.0;
+
+                final bars = <Widget>[];
+                for (int i = 0; i < barInfos.length; i++) {
+                  final info = barInfos[i];
+                  final color = info.schedule.color != null
+                      ? Color(int.parse('0xFF${info.schedule.color!.replaceFirst('#', '')}'))
+                      : const Color(0xFFFFB74D);
+                  final left = info.startCol * cellW + barPadding;
+                  final width = (info.endCol - info.startCol + 1) * cellW - barPadding * 2;
+                  final top = barTop + i * (barHeight + 2);
+
+                  bars.add(Positioned(
+                    left: left,
+                    top: top,
+                    width: width,
+                    height: barHeight,
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AddScheduleScreen(schedule: info.schedule),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          info.schedule.title,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ));
+                }
+                return Stack(children: bars);
+              },
+            ),
+        ],
       ),
     );
   }
@@ -382,6 +465,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       },
       child: Container(
         height: rowHeight,
+        clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
           border: Border(
             right: BorderSide(color: Colors.grey[200]!, width: 0.5),
@@ -402,11 +486,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       : MainAxisAlignment.start,
                   children: [
                     if (weekNumber != null)
-                      Text(
-                        '第$weekNumber周',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: Colors.grey[500],
+                      Flexible(
+                        child: Text(
+                          '第$weekNumber周',
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: Colors.grey[500],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     Row(
@@ -1242,4 +1330,16 @@ class _YearMonthPickerDialogState extends State<_YearMonthPickerDialog> {
       ),
     );
   }
+}
+
+class _MultiDayBarInfo {
+  final Schedule schedule;
+  final int startCol;
+  final int endCol;
+
+  _MultiDayBarInfo({
+    required this.schedule,
+    required this.startCol,
+    required this.endCol,
+  });
 }

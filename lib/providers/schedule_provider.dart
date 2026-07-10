@@ -66,8 +66,36 @@ class ScheduleProvider with ChangeNotifier {
   List<Schedule> getSchedulesByDate(DateTime date) {
     final dateStr = date.toIso8601String().split('T')[0];
     return _schedules.where((schedule) {
-      final scheduleDate = schedule.startTime.split('T')[0];
-      return scheduleDate == dateStr;
+      final startDate = schedule.startTime.split('T')[0];
+      if (schedule.endTime != null && schedule.endTime!.isNotEmpty) {
+        final endDate = schedule.endTime!.split('T')[0];
+        return dateStr.compareTo(startDate) >= 0 && dateStr.compareTo(endDate) <= 0;
+      }
+      return startDate == dateStr;
+    }).toList();
+  }
+
+  /// 判断日程是否跨天（startTime 和 endTime 日期不同）
+  bool isMultiDay(Schedule schedule) {
+    if (schedule.endTime == null || schedule.endTime!.isEmpty) return false;
+    final startDate = schedule.startTime.split('T')[0];
+    final endDate = schedule.endTime!.split('T')[0];
+    return startDate != endDate;
+  }
+
+  /// 获取与指定周有交集的跨天日程
+  List<Schedule> getMultiDaySchedulesForWeek(List<DateTime> weekDays) {
+    if (weekDays.isEmpty) return [];
+    final weekStart = weekDays.first;
+    final weekEnd = weekDays.last;
+    final weekStartStr = weekStart.toIso8601String().split('T')[0];
+    final weekEndStr = weekEnd.toIso8601String().split('T')[0];
+
+    return _schedules.where((schedule) {
+      if (!isMultiDay(schedule)) return false;
+      final startDate = schedule.startTime.split('T')[0];
+      final endDate = schedule.endTime!.split('T')[0];
+      return startDate.compareTo(weekEndStr) <= 0 && endDate.compareTo(weekStartStr) >= 0;
     }).toList();
   }
 }

@@ -199,12 +199,13 @@ class DatabaseService {
 
   Future<List<Schedule>> getSchedulesByDateRange(DateTime startDate, DateTime endDate) async {
     final db = await DBHelper.instance.database;
+    final endOfRange = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
     final List<Map<String, dynamic>> maps = await db.query(
       'schedules',
-      where: 'start_time BETWEEN ? AND ?',
+      where: 'start_time <= ? AND (end_time IS NULL OR end_time >= ?)',
       whereArgs: [
+        endOfRange.toIso8601String(),
         startDate.toIso8601String(),
-        endDate.toIso8601String(),
       ],
       orderBy: 'start_time ASC',
     );

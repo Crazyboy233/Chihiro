@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -330,6 +332,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final weekNumber = _getWeekNumber(weekDays.first);
     final multiDaySchedules = scheduleProvider.getMultiDaySchedulesForWeek(weekDays);
 
+    // 统计每天的非跨天日程数量
+    final dayRegularCounts = <int, int>{};
+    for (int i = 0; i < weekDays.length; i++) {
+      dayRegularCounts[i] = scheduleProvider
+          .getSchedulesByDate(weekDays[i])
+          .where((s) => !scheduleProvider.isMultiDay(s))
+          .length;
+    }
+
     // 为每个跨天日程计算在本周内的起止列
     final barInfos = <_MultiDayBarInfo>[];
     for (final schedule in multiDaySchedules) {
@@ -349,6 +360,39 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         startCol: startCol,
         endCol: endCol,
       ));
+    }
+
+    // 计算每个跨天条的 baseY = 头部高度 + 最大日程数 * 单项高度
+    const headerBase = 36.0; // 4px top padding + 28px date header + 4px buffer
+    const holidayExtra = 16.0;
+    const itemHeight = 18.0;
+    const barHeight = 22.0;
+    const barPadding = 4.0;
+    const barGap = 2.0;
+
+    for (final info in barInfos) {
+      int maxRegular = 0;
+      bool hasHoliday = false;
+      for (int col = info.startCol; col <= info.endCol; col++) {
+        if (dayRegularCounts[col]! > maxRegular) {
+          maxRegular = dayRegularCounts[col]!;
+        }
+        final holidayInfo = HolidayService().getHolidayInfo(weekDays[col]);
+        if (holidayInfo.name.isNotEmpty) hasHoliday = true;
+      }
+      info.baseY = headerBase + (hasHoliday ? holidayExtra : 0) + maxRegular * itemHeight;
+    }
+
+    // 处理重叠：按 baseY 排序后逐个放置，重叠的向下推
+    barInfos.sort((a, b) => a.baseY.compareTo(b.baseY));
+    for (int i = 0; i < barInfos.length; i++) {
+      double y = barInfos[i].baseY;
+      for (int j = 0; j < i; j++) {
+        if (barInfos[j].overlaps(barInfos[i])) {
+          y = math.max(y, barInfos[j].placedY + barHeight + barGap);
+        }
+      }
+      barInfos[i].placedY = y;
     }
 
     return Container(
@@ -372,23 +416,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             LayoutBuilder(
               builder: (context, constraints) {
                 final cellW = constraints.maxWidth / 7;
-                const barTop = 28.0;
-                const barHeight = 22.0;
-                const barPadding = 4.0;
 
                 final bars = <Widget>[];
-                for (int i = 0; i < barInfos.length; i++) {
-                  final info = barInfos[i];
+                for (final info in barInfos) {
                   final color = info.schedule.color != null
                       ? Color(int.parse('0xFF${info.schedule.color!.replaceFirst('#', '')}'))
                       : const Color(0xFFFFB74D);
                   final left = info.startCol * cellW + barPadding;
                   final width = (info.endCol - info.startCol + 1) * cellW - barPadding * 2;
-                  final top = barTop + i * (barHeight + 2);
 
                   bars.add(Positioned(
                     left: left,
-                    top: top,
+                    top: info.placedY,
                     width: width,
                     height: barHeight,
                     child: GestureDetector(
@@ -603,7 +642,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     ScheduleProvider scheduleProvider,
     double rowHeight,
   ) {
-    final daySchedules = scheduleProvider.getSchedulesByDate(day);
+    final daySchedules = scheduleProvider
+        .getSchedulesByDate(day)
+        .where((s) => !scheduleProvider.isMultiDay(s))
+        .toList();
 
     final children = <Widget>[];
     final maxItems = rowHeight > 100 ? 4 : 3;
@@ -1336,10 +1378,16 @@ class _MultiDayBarInfo {
   final Schedule schedule;
   final int startCol;
   final int endCol;
+  double baseY = 0;
+  double placedY = 0;
 
   _MultiDayBarInfo({
     required this.schedule,
     required this.startCol,
     required this.endCol,
   });
+
+  bool overlaps(_MultiDayBarInfo other) {
+    return startCol <= other.endCol && endCol >= other.startCol;
+  }
 }

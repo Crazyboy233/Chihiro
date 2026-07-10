@@ -20,6 +20,17 @@ class ChangelogEntry {
 // 在这里添加新版本的更新说明
 const List<ChangelogEntry> changelog = [
   ChangelogEntry(
+    version: 'V1.2.0',
+    date: '2026-07-10',
+    newFeatures: [
+      '统计页新增饼图，点击右上角图表按钮可查看各分类支出占比，支持点击扇区放大、引线标注',
+      '日程支持跨天安排，可设置从某天到某天的长时间日程，日历中以彩色横条跨单元格显示',
+    ],
+    bugFixes: [
+      '修复日程单元格文字溢出到相邻单元格的问题',
+    ],
+  ),
+  ChangelogEntry(
     version: 'V1.1.4',
     date: '2026-06-23',
     newFeatures: [

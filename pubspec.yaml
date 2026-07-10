@@ -1,7 +1,7 @@
 name: qianxun
 description: 千寻记账与日程管理应用
 publish_to: 'none'
-version: 1.1.4+6
+version: 1.2.0+7
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -29,6 +29,15 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  image_path: "chihiro.png"
+  windows:
+    generate: true
+    image_path: "chihiro.png"
+    icon_size: 48
 
 flutter:
   uses-material-design: true

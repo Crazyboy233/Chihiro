@@ -7,130 +7,353 @@ import 'package:sqflite/sqflite.dart';
 import 'db_helper.dart';
 
 /// 数据导出/导入工具
-/// - 导出：把数据库所有表的数据读出来，保存为 JSON 文件
-/// - 导入：从 JSON 文件读取数据，**追加合并**到当前数据（不删除任何现有记录）
-/// - Android：优先写入公共 Download/ChihiroBackup 目录（文件管理器可见）；
-///   导入使用系统文件选择器（SAF），可选择任意位置的 JSON 文件
+///
+/// 支持三种导出模式：
+/// - 账本级：导出当前活跃账本的全部数据 → JSON
+/// - 账号级：导出当前账号下所有账本的全部数据 → 一个嵌套 JSON
+/// - 导入时自动识别文件类型（旧版 / 账本 / 账号），追加合并
 class DataBackup {
-  static const _backupVersion = 2;
+  static const _backupVersion = 3;
+  static const _backupTypeBook = 'book';
+  static const _backupTypeAccount = 'account';
 
-  /// 主表：没有依赖其它表，有主键 id 被明细表引用
-  static const List<String> _masterTables = [
-    'categories',
-    'schedule_categories',
-    'habit_goals',
-  ];
+  // 账本级表（仅账单）
+  static const List<String> _bookTables = ['categories', 'transactions'];
 
-  /// 明细表：依赖主表的外键
-  static const List<String> _detailTables = [
-    'transactions',
-    'schedules',
-    'habit_records',
-  ];
-
-  /// 完整导出/导入顺序（先主后子）
-  static const List<String> _tableOrder = [
-    ..._masterTables,
-    ..._detailTables,
+  // 账号级表（日程、打卡）
+  static const List<String> _accountTables = [
+    'schedule_categories', 'schedules',
+    'habit_goals', 'habit_records',
   ];
 
   // ============================================================
-  // 导出
+  // 数据库路径 — 导出 / 导入时可能读取任意账本的 .db
   // ============================================================
 
-  /// 导出全部数据到 JSON 文件（优先写入公共 Download/ChihiroBackup 目录）
-  /// 返回：导出文件的绝对路径
-  static Future<String> exportAll() async {
-    final db = await DBHelper.instance.database;
-
-    // 1. 读取所有表的数据
-    final Map<String, List<Map<String, dynamic>>> tables = {};
-    for (final table in _tableOrder) {
-      final rows = await db.query(table);
-      tables[table] = rows.map((row) => Map<String, dynamic>.from(row)).toList();
+  /// 打开指定账本的数据库连接（临时，用完即关）
+  static Future<Database> _openBookDb(int bookId) async {
+    final dbPath = await DBHelper.getBookDbPath(bookId);
+    final file = File(dbPath);
+    if (!await file.exists()) {
+      throw Exception('账本数据文件不存在: $dbPath');
     }
 
-    // 2. 组装完整的备份对象
-    final Map<String, dynamic> backup = {
+    return await openDatabase(
+      dbPath,
+      version: 3,
+      readOnly: true,
+    );
+  }
+
+  /// 从 DB 连接读取指定表的数据
+  static Future<Map<String, List<Map<String, dynamic>>>> _readTables(
+      Database db, List<String> tables) async {
+    final result = <String, List<Map<String, dynamic>>>{};
+    for (final table in tables) {
+      try {
+        final rows = await db.query(table);
+        result[table] = rows.map((row) => Map<String, dynamic>.from(row)).toList();
+      } catch (_) {
+        result[table] = [];
+      }
+    }
+    return result;
+  }
+
+  // ============================================================
+  // 账本级导出 / 导入
+  // ============================================================
+
+  /// 导出单个账本 → JSON
+  /// [bookId] 账本 ID，[bookName] 用于文件名
+  static Future<String> exportBook(int bookId, String bookName) async {
+    final db = await _openBookDb(bookId);
+    try {
+      final tables = await _readTables(db, _bookTables);
+      final backup = {
+        'type': _backupTypeBook,
+        'version': _backupVersion,
+        'book_name': bookName,
+        'exported_at': DateTime.now().toIso8601String(),
+        'tables': tables,
+      };
+
+      final dir = await _getBackupDirectory();
+      final timestamp =
+          DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
+      final safe = bookName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final fileName = 'chihiro_book_${safe}_$timestamp.json';
+      final file = File(p.join(dir.path, fileName));
+      await file.writeAsString(
+        const JsonEncoder.withIndent('  ').convert(backup),
+        encoding: utf8,
+      );
+      return file.path;
+    } finally {
+      await db.close();
+    }
+  }
+
+  // ============================================================
+  // 账号级导出
+  // ============================================================
+
+  /// 导出某个账号下的所有账本 + 账号级数据 → 一个嵌套 JSON
+  static Future<String> exportAccount({
+    required String accountName,
+    required int accountId,
+    required List<Map<String, dynamic>> bookMetas,
+  }) async {
+    final booksData = <Map<String, dynamic>>[];
+    for (final meta in bookMetas) {
+      final bookId = meta['id'] as int;
+      final bookName = meta['name'] as String;
+      final db = await _openBookDb(bookId);
+      try {
+        final tables = await _readTables(db, _bookTables);
+        booksData.add({
+          'name': bookName,
+          'tables': tables,
+        });
+      } finally {
+        await db.close();
+      }
+    }
+
+    // 导出账号级数据（日程、打卡）
+    final accountDbPath = await DBHelper.getAccountDbPath(accountId);
+    Map<String, List<Map<String, dynamic>>> accountTables = {};
+    if (File(accountDbPath).existsSync()) {
+      final accDb = await openDatabase(accountDbPath, version: 1, readOnly: true);
+      try {
+        accountTables = await _readTables(accDb, _accountTables);
+      } finally {
+        await accDb.close();
+      }
+    }
+
+    final backup = {
+      'type': _backupTypeAccount,
       'version': _backupVersion,
+      'account_name': accountName,
       'exported_at': DateTime.now().toIso8601String(),
-      'tables': tables,
+      'books': booksData,
+      'account_tables': accountTables,
     };
 
-    // 3. 写入文件（优先公共 Download 目录）
     final dir = await _getBackupDirectory();
-    final fileName =
-        'chihiro_backup_${DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0]}.json';
+    final timestamp =
+        DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
+    final safe = accountName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final fileName = 'chihiro_account_${safe}_$timestamp.json';
     final file = File(p.join(dir.path, fileName));
     await file.writeAsString(
       const JsonEncoder.withIndent('  ').convert(backup),
       encoding: utf8,
     );
-
     return file.path;
   }
 
   // ============================================================
-  // 导入（追加合并）
+  // 导入（自动识别类型）
   // ============================================================
 
-  /// 从 JSON 文件导入数据 —— **追加合并模式**
-  static Future<Map<String, int>> importFromFile(String filePath) async {
+  /// 导入 JSON 备份文件到当前活跃账本。
+  /// 自动识别文件类型：
+  /// - 旧版（无 type 字段）→ 当作单个账本导入
+  /// - type=book → 单账本导入
+  /// - type=account → 批量创建账本并导入
+  /// 返回结果描述文本
+  static Future<String> importFromFile(String filePath, {
+    required int currentAccountId,
+    required int currentBookId,
+    required Future<void> Function() onBooksChanged,
+  }) async {
     final file = File(filePath);
-    if (!await file.exists()) {
-      throw Exception('文件不存在: $filePath');
-    }
+    if (!await file.exists()) throw Exception('文件不存在: $filePath');
 
     final content = await file.readAsString(encoding: utf8);
     final data = jsonDecode(content) as Map<String, dynamic>;
-
-    if (data['tables'] == null) {
-      throw Exception('文件格式不正确，缺少 tables 字段');
-    }
-
-    final tables = data['tables'] as Map<String, dynamic>;
+    final type = data['type'] as String?;
+    final tablesRaw = data['tables'];
 
     final db = await DBHelper.instance.database;
 
+    if (type == _backupTypeAccount) {
+      // ===== 账号级导入 =====
+      final books = data['books'] as List<dynamic>?;
+      if (books == null || books.isEmpty) throw Exception('账号备份中没有账本数据');
+
+      int totalInserted = 0;
+      int totalMerged = 0;
+
+      for (final bookData in books) {
+        final bookMap = bookData as Map<String, dynamic>;
+        final tables = bookMap['tables'] as Map<String, dynamic>?;
+        if (tables == null) continue;
+
+        // 查找是否存在同名账本，否则创建新账本
+        // 注：这里需要调用 BookService，为了避免循环依赖，通过回调处理
+        // 实际上导入时应当由 DataManagementScreen 配合 BookProvider 来完成账本匹配
+        // 这里简化：将当前活跃账号下所有账本数据导入当前活跃账本
+        final result = await _importTables(db, tables);
+        totalInserted += result['inserted'] as int;
+        totalMerged += result['merged'] as int;
+      }
+
+      return '$totalInserted 条新增 / $totalMerged 条合并';
+    }
+
+    // ===== 单账本 / 旧版导入 =====
+    final tables = (tablesRaw ?? data['tables']) as Map<String, dynamic>?;
+    if (tables == null) throw Exception('文件格式不正确，缺少 tables 字段');
+
+    final result = await _importTables(db, tables);
+    return '${result['inserted']} 条新增 / ${result['merged']} 条合并';
+  }
+
+  /// 账号级导入 —— 将每个账本的数据导入到对应的新账本中
+  static Future<String> importAccountBackup(
+    String filePath, {
+    required int currentAccountId,
+    required Future<int> Function(String name) createBook,
+    required int currentBookId,
+  }) async {
+    final file = File(filePath);
+    if (!await file.exists()) throw Exception('文件不存在: $filePath');
+
+    final content = await file.readAsString(encoding: utf8);
+    final data = jsonDecode(content) as Map<String, dynamic>;
+    final type = data['type'] as String?;
+
+    if (type != _backupTypeAccount) {
+      throw Exception('该文件不是账号备份，请用普通导入功能');
+    }
+
+    final books = data['books'] as List<dynamic>?;
+    if (books == null || books.isEmpty) throw Exception('账号备份中没有账本数据');
+
+    int totalInserted = 0;
+    int totalMerged = 0;
+    final results = <String>[];
+
+    for (final bookData in books) {
+      final bookMap = bookData as Map<String, dynamic>;
+      final bookName = bookMap['name'] as String? ?? '未命名账本';
+      final tables = bookMap['tables'] as Map<String, dynamic>?;
+      if (tables == null) continue;
+
+      // 创建新账本
+      int newBookId;
+      try {
+        newBookId = await createBook(bookName);
+      } catch (e) {
+        results.add('「$bookName」创建失败: $e');
+        continue;
+      }
+
+      // 切换到该账本的 DB 导入数据
+      await DBHelper.instance.setActiveBook(newBookId);
+      final db = await DBHelper.instance.database;
+      final result = await _importTables(db, tables);
+      final ins = result['inserted'] as int;
+      final mg = result['merged'] as int;
+      totalInserted += ins;
+      totalMerged += mg;
+      results.add('「$bookName」: $ins 新增 / $mg 合并');
+    }
+
+    // 导入账号级数据（日程、打卡）到账号 DB
+    final accountTables = data['account_tables'] as Map<String, dynamic>?;
+    if (accountTables != null && accountTables.isNotEmpty) {
+      try {
+        final accDb = await DBHelper.instance.accountDatabase;
+        final result = await _importTables(accDb, accountTables);
+        totalInserted += result['inserted'] as int;
+        totalMerged += result['merged'] as int;
+        results.add('日程打卡: ${result['inserted']} 新增 / ${result['merged']} 合并');
+      } catch (e) {
+        results.add('日程打卡导入失败: $e');
+      }
+    }
+
+    // 导入完成后切回原来的活跃账本
+    await DBHelper.instance.setActiveBook(currentBookId);
+
+    return '${results.join('\n')}\n合计 $totalInserted 新增 / $totalMerged 合并';
+  }
+
+  /// 获取备份文件的书名（用于 UI 提示），无法解析则返回 null
+  static Future<String?> getBackupBookName(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) return null;
+      final content = await file.readAsString(encoding: utf8);
+      final data = jsonDecode(content) as Map<String, dynamic>;
+      final type = data['type'] as String?;
+      if (type == _backupTypeBook) return data['book_name'] as String?;
+      if (type == _backupTypeAccount) return data['account_name'] as String?;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 获取备份文件类型（用于 UI 展示确认信息）
+  static Future<String> detectBackupType(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) return 'unknown';
+      final content = await file.readAsString(encoding: utf8);
+      final data = jsonDecode(content) as Map<String, dynamic>;
+      final type = data['type'] as String?;
+      if (type == _backupTypeAccount) return 'account';
+      if (type == _backupTypeBook) return 'book';
+      return 'legacy';
+    } catch (_) {
+      return 'unknown';
+    }
+  }
+
+  // ============================================================
+  // 通用导入逻辑
+  // ============================================================
+
+  static Future<Map<String, int>> _importTables(Database db, Map<String, dynamic> tables) async {
     // 各主表的 旧id → 新id 映射
     final Map<String, Map<int, int>> idMappings = {};
     int inserted = 0;
     int merged = 0;
 
-    // 构建 name+type → 当前应用默认值 的映射（用于补全从鲨鱼记账等第三方导入的数据）
-    // 只有在这个集合里的分类才会被写入数据库
+    // 默认分类映射
     final defaultByKey = <String, Map<String, Object>>{
       for (final c in DBHelper.defaultCategories) '${c['name']}__${c['type']}': c,
     };
     final allowedKeys = defaultByKey.keys.toSet();
 
     await db.transaction((txn) async {
-      // ====== 特殊处理：categories 表（去重 + 非白名单→其他 + 字段补全） ======
-      // 策略：只有当前应用默认支持的分类才会被写入 categories 表。
-      // 鲨鱼记账的「彩票」「快递」等未知分类，其交易将被映射到「其他」。
+      // ===== 特殊处理：categories 表 =====
       final categoryRows = tables['categories'] as List<dynamic>?;
       if (categoryRows != null && categoryRows.isNotEmpty) {
-        // 以 name+type 作为唯一键：先拿库里所有的分类做索引，避免重复插入
         final allRows = await txn.query('categories');
         final existingByKey = <String, int>{};
         for (final e in allRows) {
           existingByKey['${e['name']}__${e['type']}'] = e['id'] as int;
         }
 
-        // 确保「其他」分类（expense/income）存在，供未知分类兜底映射
         final fallbackIds = <String, int>{};
         for (final type in const ['expense', 'income']) {
           final key = '其他__$type';
           if (existingByKey.containsKey(key)) {
             fallbackIds[type] = existingByKey[key]!;
           } else if (defaultByKey.containsKey(key)) {
-            final newId = await txn.insert('categories', Map<String, dynamic>.from(defaultByKey[key]!));
+            final newId =
+                await txn.insert('categories', Map<String, dynamic>.from(defaultByKey[key]!));
             fallbackIds[type] = newId;
             existingByKey[key] = newId;
           }
         }
 
-        // 遍历导入文件中的分类，逐个建立 旧id → 新id 映射
         final categoryMapping = <int, int>{};
         for (final row in categoryRows) {
           final map = Map<String, dynamic>.from(row as Map);
@@ -142,23 +365,18 @@ class DataBackup {
           if (name.isEmpty) continue;
           final key = '${name}__$type';
 
-          // 库里已有同名分类 → 复用其 id
           if (existingByKey.containsKey(key)) {
             categoryMapping[oldId] = existingByKey[key]!;
             merged++;
             continue;
           }
 
-          // 非白名单分类 → 映射到「其他」，不新增分类
           if (!allowedKeys.contains(key)) {
             final fallbackId = fallbackIds[type == 'income' ? 'income' : 'expense'];
-            if (fallbackId != null) {
-              categoryMapping[oldId] = fallbackId;
-            }
+            if (fallbackId != null) categoryMapping[oldId] = fallbackId;
             continue;
           }
 
-          // 白名单分类且库里没有 → 插入（强制使用当前应用的 icon/color 等字段）
           final d = defaultByKey[key]!;
           final newId = await txn.insert('categories', Map<String, dynamic>.from(d));
           categoryMapping[oldId] = newId;
@@ -168,9 +386,9 @@ class DataBackup {
         idMappings['categories'] = categoryMapping;
       }
 
-      // ====== 第一轮：处理其余主表 ======
-      for (final table in _masterTables) {
-        if (table == 'categories') continue; // 已单独处理
+      // ===== 其余主表（schedule_categories, habit_goals） =====
+      for (final table in ['schedule_categories', 'habit_goals']) {
+        if (table == 'categories') continue;
         final rows = tables[table] as List<dynamic>?;
         if (rows == null || rows.isEmpty) continue;
 
@@ -182,7 +400,7 @@ class DataBackup {
           final oldId = map['id'] as int?;
           if (oldId == null) continue;
 
-          final existingId = await _findExistingId(txn, table, map, existingRows);
+          final existingId = _findExistingIdInMemory(table, map, existingRows);
           if (existingId != null) {
             mapping[oldId] = existingId;
             merged++;
@@ -197,8 +415,8 @@ class DataBackup {
         idMappings[table] = mapping;
       }
 
-      // ====== 第二轮：处理明细表 ======
-      for (final table in _detailTables) {
+      // ===== 明细表（transactions, schedules, habit_records） =====
+      for (final table in ['transactions', 'schedules', 'habit_records']) {
         final rows = tables[table] as List<dynamic>?;
         if (rows == null || rows.isEmpty) continue;
 
@@ -224,34 +442,24 @@ class DataBackup {
     return {'inserted': inserted, 'merged': merged};
   }
 
-  // ============================================================
-  // 辅助：主表去重匹配
-  // ============================================================
-
-  static Future<int?> _findExistingId(
-    DatabaseExecutor txn,
-    String table,
-    Map<String, dynamic> newRow,
-    List<Map<String, dynamic>> existingRows,
-  ) async {
+  static int? _findExistingIdInMemory(
+      String table, Map<String, dynamic> a, List<Map<String, dynamic>> existingRows) {
     for (final existing in existingRows) {
-      final match = _matchesRow(table, newRow, existing);
+      bool match = false;
+      switch (table) {
+        case 'categories':
+          match = a['name'] == existing['name'] && a['type'] == existing['type'];
+          break;
+        case 'schedule_categories':
+          match = a['name'] == existing['name'];
+          break;
+        case 'habit_goals':
+          match = a['name'] == existing['name'] && a['start_date'] == existing['start_date'];
+          break;
+      }
       if (match) return existing['id'] as int;
     }
     return null;
-  }
-
-  static bool _matchesRow(String table, Map<String, dynamic> a, Map<String, dynamic> b) {
-    switch (table) {
-      case 'categories':
-        return a['name'] == b['name'] && a['type'] == b['type'];
-      case 'schedule_categories':
-        return a['name'] == b['name'];
-      case 'habit_goals':
-        return a['name'] == b['name'] && a['start_date'] == b['start_date'];
-      default:
-        return false;
-    }
   }
 
   static String _getMasterTableForDetail(String table) {
@@ -284,32 +492,22 @@ class DataBackup {
   // 文件目录与扫描
   // ============================================================
 
-  /// Android 公共存储根目录
   static const String _androidStoragePrefix = '/storage/emulated/0';
-
-  /// 公共 Download 目录下的备份子目录（文件管理器可见）
   static const String _publicSubDir = 'Download/ChihiroBackup';
 
-  /// 获取备份文件保存目录 —— **优先写入公共 Download/ChihiroBackup 目录**
-  /// 这样用户在文件管理器中直接可见，无需进入 Android/data 隐藏目录
   static Future<Directory> _getBackupDirectory() async {
-    // --- 策略 1：直接写入公共 Download/ChihiroBackup（首选，Android 文件管理器可见） ---
     try {
       final publicPath = p.join(_androidStoragePrefix, _publicSubDir);
       final publicDir = Directory(publicPath);
       if (!await publicDir.exists()) {
         await publicDir.create(recursive: true);
       }
-      // 写入测试：确认该目录确实可写
       final testFile = File(p.join(publicDir.path, '.chihiro_write_test'));
       await testFile.writeAsString('ok');
       await testFile.delete();
       return publicDir;
-    } catch (_) {
-      // 公共目录不可写，继续回退
-    }
+    } catch (_) {}
 
-    // --- 策略 2：使用 path_provider 获取的外部存储目录（/storage/emulated/0/Android/data/com.chihiro/files） ---
     try {
       final externalDirs = await getExternalStorageDirectories();
       if (externalDirs != null && externalDirs.isNotEmpty) {
@@ -319,20 +517,17 @@ class DataBackup {
       }
     } catch (_) {}
 
-    // --- 策略 3：应用沙箱 Documents 目录（最终兜底） ---
     final docDir = await getApplicationDocumentsDirectory();
     final dir = Directory(p.join(docDir.path, 'Backup'));
     if (!await dir.exists()) await dir.create(recursive: true);
     return dir;
   }
 
-  /// 获取备份目录的完整路径（供 UI 展示/复制）
   static Future<String> getBackupDirectoryPath() async {
     final dir = await _getBackupDirectory();
     return dir.path;
   }
 
-  /// 获取当前备份目录下的所有备份文件（按时间倒序）
   static Future<List<File>> listBackupFiles() async {
     final dir = await _getBackupDirectory();
     if (!await dir.exists()) return [];
@@ -342,7 +537,6 @@ class DataBackup {
     return entities;
   }
 
-  /// 删除指定的备份文件
   static Future<void> deleteBackupFile(String path) async {
     final file = File(path);
     if (await file.exists()) {
@@ -350,16 +544,6 @@ class DataBackup {
     }
   }
 
-  // ============================================================
-  // 系统文件选择器（SAF）
-  // ============================================================
-
-  /// 调用系统文件选择器，让用户选择一个 JSON 备份文件
-  /// 返回选中文件的绝对路径；用户取消则返回 null
-  ///
-  /// **这个方法的优点**：通过 Android SAF（存储访问框架）获得临时访问权限，
-  /// 不需要任何存储权限，用户可以选择手机上任意位置的文件，
-  /// 包括 /storage/emulated/0 根目录、Download、Documents、SD 卡等。
   static Future<String?> pickBackupFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(

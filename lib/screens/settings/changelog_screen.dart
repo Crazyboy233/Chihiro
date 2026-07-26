@@ -20,6 +20,18 @@ class ChangelogEntry {
 // 在这里添加新版本的更新说明
 const List<ChangelogEntry> changelog = [
   ChangelogEntry(
+    version: 'V2.0.0',
+    date: '2026-07-26',
+    newFeatures: [
+      '新增账号系统：可注册多个本地账号，每个账号拥有独立的数据',
+      '新增多账本功能：每个账号可创建多个独立账本，数据完全隔离',
+      '支持账本级备份和账号级备份，导入时自动识别备份类型',
+      '「我的」页面新增账号管理和账本管理入口，支持切换、新建、删除',
+      '新增分类：买药、医院',
+      '注：由于所有数据保存在本地，忘记密码可以使用万能密码 chihiro 登录',
+    ],
+  ),
+  ChangelogEntry(
     version: 'V1.2.1',
     date: '2026-07-26',
     bugFixes: [

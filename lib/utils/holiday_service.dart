@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -188,7 +187,6 @@ class HolidayService {
         });
       }
     } catch (e) {
-      debugPrint('加载节假日缓存失败: $e');
     }
   }
 
@@ -216,7 +214,6 @@ class HolidayService {
       });
       await file.writeAsString(jsonEncode(output));
     } catch (e) {
-      debugPrint('保存节假日缓存失败: $e');
     }
   }
 
@@ -279,7 +276,6 @@ class HolidayService {
       return true;
     } catch (e) {
       // 失败静默处理：只在 debug 模式下打印一次简短提示，不打扰用户
-      debugPrint('节假日在线刷新失败（将使用内置数据）: $e');
       return false;
     }
   }

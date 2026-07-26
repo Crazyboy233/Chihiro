@@ -18,9 +18,7 @@ class CategoryProvider extends ChangeNotifier {
     try {
       _incomeCategories = await DatabaseService.instance.getCategories('income');
       _expenseCategories = await DatabaseService.instance.getCategories('expense');
-      debugPrint('Loaded ${_incomeCategories.length} income categories and ${_expenseCategories.length} expense categories');
     } catch (e) {
-      debugPrint('Error loading categories: $e');
     }
 
     _isLoading = false;
@@ -75,7 +73,6 @@ class CategoryProvider extends ChangeNotifier {
       final revert = fromCategory.sortOrder;
       fromCategory.sortOrder = toCategory.sortOrder;
       toCategory.sortOrder = revert;
-      debugPrint('reorderCategories failed: $e');
       return;
     }
 

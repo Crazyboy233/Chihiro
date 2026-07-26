@@ -174,12 +174,12 @@ class DatabaseService {
   }
 
   Future<int> insertSchedule(Schedule schedule) async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     return await db.insert('schedules', schedule.toMap());
   }
 
   Future<int> updateSchedule(Schedule schedule) async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     return await db.update(
       'schedules',
       schedule.toMap(),
@@ -189,7 +189,7 @@ class DatabaseService {
   }
 
   Future<int> deleteSchedule(int id) async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     return await db.delete(
       'schedules',
       where: 'id = ?',
@@ -198,7 +198,7 @@ class DatabaseService {
   }
 
   Future<List<Schedule>> getSchedulesByDateRange(DateTime startDate, DateTime endDate) async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     final endOfRange = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
     final List<Map<String, dynamic>> maps = await db.query(
       'schedules',
@@ -213,12 +213,12 @@ class DatabaseService {
   }
 
   Future<int> insertHabitGoal(HabitGoal goal) async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     return await db.insert('habit_goals', goal.toMap());
   }
 
   Future<int> updateHabitGoal(HabitGoal goal) async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     return await db.update(
       'habit_goals',
       goal.toMap(),
@@ -228,7 +228,7 @@ class DatabaseService {
   }
 
   Future<int> deleteHabitGoal(int id) async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     return await db.delete(
       'habit_goals',
       where: 'id = ?',
@@ -237,7 +237,7 @@ class DatabaseService {
   }
 
   Future<List<HabitGoal>> getActiveHabitGoals() async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     final List<Map<String, dynamic>> maps = await db.query(
       'habit_goals',
       where: 'is_active = ?',
@@ -248,12 +248,12 @@ class DatabaseService {
   }
 
   Future<int> insertHabitRecord(HabitRecord record) async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     return await db.insert('habit_records', record.toMap());
   }
 
   Future<List<HabitRecord>> getHabitRecords(int goalId, DateTime startDate, DateTime endDate) async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     final List<Map<String, dynamic>> maps = await db.query(
       'habit_records',
       where: 'goal_id = ? AND date BETWEEN ? AND ?',
@@ -268,7 +268,7 @@ class DatabaseService {
   }
 
   Future<int> updateHabitRecord(HabitRecord record) async {
-    final db = await DBHelper.instance.database;
+    final db = await DBHelper.instance.accountDatabase;
     return await db.update(
       'habit_records',
       record.toMap(),

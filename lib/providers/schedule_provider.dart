@@ -16,7 +16,6 @@ class ScheduleProvider with ChangeNotifier {
     try {
       _schedules = await DatabaseService.instance.getSchedulesByDateRange(startDate, endDate);
     } catch (e) {
-      debugPrint('加载日程失败: $e');
     }
 
     _isLoading = false;
@@ -32,7 +31,6 @@ class ScheduleProvider with ChangeNotifier {
       notifyListeners();
       return id;
     } catch (e) {
-      debugPrint('添加日程失败: $e');
       rethrow;
     }
   }
@@ -47,7 +45,6 @@ class ScheduleProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('更新日程失败: $e');
       rethrow;
     }
   }
@@ -58,7 +55,6 @@ class ScheduleProvider with ChangeNotifier {
       _schedules.removeWhere((s) => s.id == id);
       notifyListeners();
     } catch (e) {
-      debugPrint('删除日程失败: $e');
       rethrow;
     }
   }

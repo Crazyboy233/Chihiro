@@ -82,7 +82,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ? categoryProvider.incomeCategories
                 : categoryProvider.expenseCategories;
 
-            debugPrint('Showing ${categories.length} categories for $_type');
 
             if (categoryProvider.isLoading) {
               return const Center(child: CircularProgressIndicator());

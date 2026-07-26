@@ -53,11 +53,23 @@ class AboutScreen extends StatelessWidget {
             icon: Icons.security,
             title: '数据安全',
             children: const [
-              _BulletPoint(text: '🔒 你的数据只属于你，保存在你自己的设备上。'),
+              _BulletPoint(text: '🔒 所有数据保存在你自己的设备上。'),
               _BulletPoint(text: '🔒 不会上传到任何云端服务器。'),
               _BulletPoint(text: '🔒 不会与其他应用共享。'),
               _BulletPoint(text: '🔒 如需保护数据安全，请在「我的 → 数据管理」中定期导出备份。'),
               _BulletPoint(text: '⚠️ 卸载应用或清除应用数据会导致数据丢失，请在操作前先导出备份。'),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // =============== 数据结构 ===============
+          _buildSection(
+            icon: Icons.account_tree_outlined,
+            title: '数据结构',
+            children: const [
+              _BulletPoint(text: '📒 账单（记账记录）→ 与「账本」绑定，切换账本会切换账单数据，不同账本的账单完全独立。'),
+              _BulletPoint(text: '📅 日程 + ✅ 打卡 → 与「账号」绑定，切换账号会切换日程和打卡数据。'),
+              _BulletPoint(text: '💡 示例：在同一账号下创建「日常」和「旅行」两个账本，日常账单和旅行账单互不影响，但日程和打卡是共享的。'),
             ],
           ),
           const SizedBox(height: 12),
@@ -78,20 +90,13 @@ class AboutScreen extends StatelessWidget {
             icon: Icons.verified_user_outlined,
             title: '应用信息',
             children: const [
-              _BulletText(label: '版本', value: 'V1.2.1'),
+              _BulletText(label: '版本', value: 'V2.0.0'),
               _BulletText(label: '应用名', value: 'Chihiro'),
               _BulletText(label: '包名', value: 'com.chihiro'),
-              _BulletText(label: '数据类型', value: 'SQLite 本地数据库 + JSON 备份文件'),
+              _BulletText(label: '数据类型', value: '账单=账本级SQLite · 日程打卡=账号级SQLite · JSON备份'),
             ],
           ),
           const SizedBox(height: 24),
-
-          const Center(
-            child: Text(
-              'Chihiro · 本地数据 · 你的数据只属于你',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ),
         ],
       ),
     );

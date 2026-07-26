@@ -1,17 +1,300 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/account_provider.dart';
+import '../../providers/book_provider.dart';
+import '../../providers/category_provider.dart';
+import '../../providers/transaction_provider.dart';
+import '../../providers/habit_provider.dart';
+import '../../utils/db_helper.dart';
 import 'data_management_screen.dart';
 import 'about_screen.dart';
 import 'changelog_screen.dart';
+import '../auth/login_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
-  // 软件版本号 — 每次发版时这里和 pubspec.yaml / build.gradle / Info.plist 同步更新
-  static const String appVersion = '1.2.1';
-  static const int appBuild = 2;
+  static const String appVersion = '2.0.0';
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  // ======================== 账号 ========================
+
+  Future<void> _switchAccount(int accountId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('切换账号'),
+        content: const Text('切换后将加载该账号下的数据。确定切换吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('切换')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final ap = context.read<AccountProvider>();
+    final bp = context.read<BookProvider>();
+    try {
+      await ap.switchAccount(accountId);
+      if (mounted) await bp.loadBooks(accountId);
+      if (mounted && bp.currentBook != null) {
+        await bp.switchBook(bp.currentBook!.id);
+      }
+      if (mounted) await DBHelper.instance.setActiveAccount(accountId);
+      if (mounted) {
+        await context.read<CategoryProvider>().loadCategories();
+        await context.read<TransactionProvider>().loadTransactions();
+        await context.read<HabitProvider>().loadGoals();
+      }
+      if (mounted) {
+        setState(() {}); // 强制刷新，确保账本栏显示正确
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已切换账号'), duration: Duration(seconds: 1)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('切换失败: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addAccount() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
+    if (mounted) {
+      final ap = context.read<AccountProvider>();
+      await ap.refresh();
+      if (ap.currentAccount != null) {
+        final bp = context.read<BookProvider>();
+        await bp.loadBooks(ap.currentAccount!.id);
+        if (bp.currentBook != null) {
+          await bp.switchBook(bp.currentBook!.id);
+        }
+        await DBHelper.instance.setActiveAccount(ap.currentAccount!.id);
+        await context.read<CategoryProvider>().loadCategories();
+        await context.read<TransactionProvider>().loadTransactions();
+        await context.read<HabitProvider>().loadGoals();
+      }
+    }
+  }
+
+  Future<void> _changeUsername() async {
+    final ap = context.read<AccountProvider>();
+    final ctrl = TextEditingController(text: ap.currentAccount?.username ?? '');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('修改用户名'),
+        content: TextField(
+          controller: ctrl, autofocus: true,
+          decoration: const InputDecoration(labelText: '新用户名', border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确认')),
+        ],
+      ),
+    );
+    if (confirmed != true || ctrl.text.trim().isEmpty) return;
+
+    try {
+      await ap.changeUsername(ctrl.text.trim());
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('用户名已修改')));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${e}'.replaceFirst('Exception: ', ''))),
+        );
+      }
+    }
+  }
+
+  Future<void> _changePassword() async {
+    final oldCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('修改密码'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: oldCtrl, obscureText: true,
+              decoration: const InputDecoration(labelText: '原密码', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: newCtrl, obscureText: true,
+              decoration: const InputDecoration(labelText: '新密码', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmCtrl, obscureText: true,
+              decoration: const InputDecoration(labelText: '确认新密码', border: OutlineInputBorder()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确认')),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (newCtrl.text != confirmCtrl.text) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('两次输入的新密码不一致')));
+      }
+      return;
+    }
+    try {
+      await context.read<AccountProvider>().changePassword(oldCtrl.text, newCtrl.text);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('密码修改成功')));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${e}'.replaceFirst('Exception: ', ''))),
+        );
+      }
+    }
+  }
+
+  // ======================== 账本 ========================
+
+  Future<void> _switchBook(int bookId) async {
+    final bp = context.read<BookProvider>();
+    try {
+      await bp.switchBook(bookId);
+      await context.read<CategoryProvider>().loadCategories();
+      await context.read<TransactionProvider>().loadTransactions();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已切换账本'), duration: Duration(seconds: 1)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('切换失败: $e')));
+      }
+    }
+  }
+
+  Future<void> _createBook() async {
+    final ap = context.read<AccountProvider>();
+    if (ap.currentAccount == null) return;
+
+    final nameCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('新建账本'),
+        content: TextField(
+          controller: nameCtrl, autofocus: true,
+          decoration: const InputDecoration(labelText: '账本名称', hintText: '如：旅行记账、家庭开支...', border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('创建')),
+        ],
+      ),
+    );
+    if (confirmed != true || nameCtrl.text.trim().isEmpty) return;
+
+    final bp = context.read<BookProvider>();
+    try {
+      await bp.createBook(ap.currentAccount!.id, nameCtrl.text.trim());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('账本「${nameCtrl.text.trim()}」已创建')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  Future<void> _deleteBook(dynamic book) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除账本'),
+        content: Text('确定要删除「${book.name}」吗？\n\n该账本下的所有数据将被永久删除，无法恢复。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('删除', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final ap = context.read<AccountProvider>();
+    final bp = context.read<BookProvider>();
+    try {
+      await bp.deleteBook(book.id, ap.currentAccount!.id);
+      if (bp.currentBook != null) {
+        await bp.switchBook(bp.currentBook!.id);
+      }
+      await context.read<CategoryProvider>().loadCategories();
+      await context.read<TransactionProvider>().loadTransactions();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('「${book.name}」已删除')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  Future<void> _renameBook(dynamic book) async {
+    final nameCtrl = TextEditingController(text: book.name);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('重命名账本'),
+        content: TextField(
+          controller: nameCtrl, autofocus: true,
+          decoration: const InputDecoration(labelText: '新名称', border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确认')),
+        ],
+      ),
+    );
+    if (confirmed != true || nameCtrl.text.trim().isEmpty) return;
+
+    final bp = context.read<BookProvider>();
+    try {
+      await bp.renameBook(book.id, nameCtrl.text.trim());
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已重命名')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  // ======================== 构建 ========================
 
   @override
   Widget build(BuildContext context) {
+    final accountProvider = context.watch<AccountProvider>();
+    final bookProvider = context.watch<BookProvider>();
+    final currentAccount = accountProvider.currentAccount;
+    final currentBook = bookProvider.currentBook;
+    final accounts = accountProvider.accounts;
+    final books = bookProvider.books;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -26,66 +309,163 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // =============== 数据管理入口 ===============
+          // ============ 账号区 ============
+          _buildSectionTitle('👤 账号'),
+          const SizedBox(height: 8),
           _buildCard(
             child: Column(
               children: [
-                _buildListTile(
-                  icon: Icons.folder,
-                  title: '数据管理',
-                  subtitle: '导出、导入、备份文件管理',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DataManagementScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(height: 1, thickness: 1, indent: 48),
-                _buildListTile(
-                  icon: Icons.article_outlined,
-                  title: '更新说明',
-                  subtitle: '查看各版本的功能更新',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ChangelogScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(height: 1, thickness: 1, indent: 48),
-                _buildListTile(
-                  icon: Icons.info_outline,
-                  title: '说明',
-                  subtitle: '联网情况、数据收集与安全说明',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AboutScreen(),
-                      ),
-                    );
-                  },
-                ),
+                // 当前账号
+                if (currentAccount != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44, height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.person, size: 26, color: Color(0xFF6366F1)),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(currentAccount.username,
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 2),
+                              Text('当前登录',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('当前', style: TextStyle(fontSize: 11, color: Color(0xFF6366F1), fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildSubTile(Icons.edit, '修改用户名', _changeUsername),
+                  _buildSubTile(Icons.lock_outline, '修改密码', _changePassword),
+                ],
+                // 账号列表
+                if (accounts.length > 1) ...[
+                  const Divider(height: 1, indent: 16),
+                  ...accounts.where((a) => currentAccount == null || a.id != currentAccount.id).map((a) =>
+                    _buildSubTileWithAction(
+                      Icons.account_circle_outlined, a.username,
+                      onTap: () => _switchAccount(a.id),
+                      actionLabel: '切换',
+                    ),
+                  ),
+                ],
+                const Divider(height: 1, indent: 16),
+                _buildSubTile(Icons.person_add, '添加新账号', _addAccount),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ============ 账本区 ============
+          _buildSectionTitle('📒 当前账本'),
+          const SizedBox(height: 8),
+          _buildCard(
+            child: Column(
+              children: [
+                // 当前账本
+                if (currentBook != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44, height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.menu_book, size: 26, color: Color(0xFF10B981)),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(currentBook.name,
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 2),
+                              Text('当前使用中',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                            ],
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _renameBook(currentBook),
+                          icon: const Icon(Icons.edit, size: 16),
+                          label: const Text('重命名', style: TextStyle(fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                // 其他账本
+                if (books.where((b) => currentBook == null || b.id != currentBook.id).isNotEmpty) ...[
+                  const Divider(height: 1, indent: 16),
+                  ...books.where((b) => currentBook == null || b.id != currentBook.id).map((b) =>
+                    _buildSubTileWithActions(
+                      Icons.menu_book_outlined, b.name,
+                      onTap: () => _switchBook(b.id),
+                      actionLabel: '切换',
+                      onDelete: () => _deleteBook(b),
+                    ),
+                  ),
+                ],
+                const Divider(height: 1, indent: 16),
+                _buildSubTile(Icons.add_circle_outline, '新建账本', _createBook),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ============ 数据管理 ============
+          _buildSectionTitle('⚙️ 其他'),
+          const SizedBox(height: 8),
+          _buildCard(
+            child: Column(
+              children: [
+                _buildListTile(Icons.folder, '数据管理', '导出、导入、备份文件管理', () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const DataManagementScreen()));
+                }),
+                const Divider(height: 1, indent: 48),
+                _buildListTile(Icons.article_outlined, '更新说明', '查看各版本的功能更新', () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangelogScreen()));
+                }),
+                const Divider(height: 1, indent: 48),
+                _buildListTile(Icons.info_outline, '说明', '联网情况、数据收集与安全说明', () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+                }),
               ],
             ),
           ),
           const SizedBox(height: 28),
-          const Center(
+          Center(
             child: Column(
               children: [
+                Text('Chihiro v${SettingsScreen.appVersion}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
                 Text(
-                  'Chihiro v$appVersion',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  '本地数据 · 你的数据只属于你',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                  currentAccount != null
+                      ? '本地数据 · ${currentAccount.username}'
+                      : '本地数据',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ],
             ),
@@ -93,6 +473,12 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // ======================== 组件 ========================
+
+  Widget _buildSectionTitle(String title) {
+    return Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87));
   }
 
   Widget _buildCard({required Widget child}) {
@@ -106,12 +492,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildListTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildListTile(IconData icon, String title, String subtitle, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -125,21 +506,86 @@ class SettingsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black87),
-                  ),
+                  Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
+                  Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
             ),
             const Icon(Icons.chevron_right, color: Colors.grey, size: 22),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSubTile(IconData icon, String title, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: Colors.black87),
+            const SizedBox(width: 12),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 14))),
+            const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubTileWithAction(IconData icon, String title,
+      {required VoidCallback onTap, required String actionLabel}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: Colors.grey),
+            const SizedBox(width: 12),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 14))),
+            Text(actionLabel, style: const TextStyle(fontSize: 12, color: Color(0xFF6366F1))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubTileWithActions(IconData icon, String title,
+      {required VoidCallback onTap, required String actionLabel, required VoidCallback onDelete}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey),
+          const SizedBox(width: 12),
+          Expanded(
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(title, style: const TextStyle(fontSize: 14))),
+                    Text(actionLabel, style: const TextStyle(fontSize: 12, color: Color(0xFF6366F1))),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+            onPressed: onDelete,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          ),
+        ],
       ),
     );
   }

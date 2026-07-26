@@ -33,7 +33,6 @@ class HabitProvider with ChangeNotifier {
       final lastDay = DateTime(month.year, month.month + 1, 0);
       await loadAllRecordsForMonth(firstDay, lastDay);
     } catch (e) {
-      debugPrint('加载打卡目标失败: $e');
     }
 
     _isLoading = false;
@@ -79,7 +78,6 @@ class HabitProvider with ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      debugPrint('加载打卡记录失败: $e');
     }
   }
 
@@ -89,7 +87,6 @@ class HabitProvider with ChangeNotifier {
       _records[goalId] = records;
       notifyListeners();
     } catch (e) {
-      debugPrint('加载打卡记录失败: $e');
     }
   }
 
@@ -110,7 +107,6 @@ class HabitProvider with ChangeNotifier {
       notifyListeners();
       return id;
     } catch (e) {
-      debugPrint('添加打卡目标失败: $e');
       rethrow;
     }
   }
@@ -124,7 +120,6 @@ class HabitProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('更新打卡目标失败: $e');
       rethrow;
     }
   }
@@ -142,7 +137,6 @@ class HabitProvider with ChangeNotifier {
       
       notifyListeners();
     } catch (e) {
-      debugPrint('删除打卡目标失败: $e');
       rethrow;
     }
   }
@@ -169,7 +163,6 @@ class HabitProvider with ChangeNotifier {
       notifyListeners();
       return id;
     } catch (e) {
-      debugPrint('添加打卡记录失败: $e');
       rethrow;
     }
   }
@@ -230,7 +223,6 @@ class HabitProvider with ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      debugPrint('切换打卡状态失败: $e');
       rethrow;
     }
   }

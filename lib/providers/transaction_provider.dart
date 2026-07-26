@@ -66,7 +66,6 @@ class TransactionProvider extends ChangeNotifier {
         range.end,
       );
     } catch (e) {
-      debugPrint('Error loading transactions: $e');
     }
 
     _isLoading = false;

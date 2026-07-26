@@ -92,3 +92,5 @@ android/key.properties         # 签名密码配置（敏感信息）
 *.jks                          # 签名证书文件，不要上传仓库
 android/app/.cxx/
 android/app/.externalNativeBuild/
+
+.workbuddy/

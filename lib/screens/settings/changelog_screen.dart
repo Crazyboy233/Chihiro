@@ -20,6 +20,13 @@ class ChangelogEntry {
 // 在这里添加新版本的更新说明
 const List<ChangelogEntry> changelog = [
   ChangelogEntry(
+    version: 'V1.2.1',
+    date: '2026-07-26',
+    bugFixes: [
+      '修复统计页饼图分类过多时标签相互覆盖的问题：引线改为斜线直连、标签按上下半区分组摆放，扇形指向一目了然',
+    ],
+  ),
+  ChangelogEntry(
     version: 'V1.2.0',
     date: '2026-07-10',
     newFeatures: [

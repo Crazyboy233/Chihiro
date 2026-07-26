@@ -699,14 +699,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           builder: (context, snapshot) {
             return Container(
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.75,
+                maxHeight: MediaQuery.of(context).size.height * 0.92,
               ),
               decoration: const BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     width: 40,
@@ -738,13 +737,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     ),
                   ),
                   if (snapshot.connectionState == ConnectionState.waiting)
-                    const SizedBox(
-                      height: 400,
+                    const Expanded(
                       child: Center(child: CircularProgressIndicator()),
                     )
                   else if (!snapshot.hasData || snapshot.data!.isEmpty)
-                    const SizedBox(
-                      height: 400,
+                    const Expanded(
                       child: Center(
                         child: Text(
                           '这个日期范围内没有记录',
@@ -753,9 +750,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       ),
                     )
                   else
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 20),
-                      child: _buildPieChartContent(categories, snapshot.data!),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 20),
+                        child: _buildPieChartContent(categories, snapshot.data!),
+                      ),
                     ),
                 ],
               ),
@@ -767,26 +766,23 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildPieChartContent(List<Category> categories, Map<String, double> summary) {
-    final sortedEntries = summary.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
     final total = summary.values.fold(0.0, (sum, value) => sum + value);
     if (total <= 0) return const SizedBox.shrink();
 
+    final sortedEntries = summary.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
     const double lineWidth = 1.2;
     const double dotRadius = 3.0;
-    const double minRadialT = 10.0;
     const double popOffset = 8.0;
     const double labelSpacing = 22.0;
     const double textGap = 5.0;
     const double edgeMargin = 8.0;
-    const double horizontalAngleThreshold = 0.18;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        final chartH = math.min(w * 0.95, 350.0);
-        final cy = chartH / 2;
+        final h = constraints.maxHeight;
 
         final entries = <_PieEntry>[];
         double currentAngle = -90;
@@ -840,147 +836,169 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           if (tw > maxTextW) maxTextW = tw;
         }
 
-        final dotColX = w / 2 - edgeMargin - dotRadius - textGap - maxTextW;
-        final extendedEntries = entries.where((e) => math.sin(e.angleRad).abs() >= horizontalAngleThreshold).toList();
-        final nearHorizEntries = entries.where((e) => math.sin(e.angleRad).abs() < horizontalAngleThreshold).toList();
-        double maxExtendedCos = 0.3;
-        for (final e in extendedEntries) {
-          final c = math.cos(e.angleRad).abs();
-          if (c > maxExtendedCos) maxExtendedCos = c;
-        }
-        double maxNearHorizCos = 0.0;
-        for (final e in nearHorizEntries) {
-          final c = math.cos(e.angleRad).abs();
-          if (c > maxNearHorizCos) maxNearHorizCos = c;
-        }
-        const minHorizForNear = 10.0;
-        final maxRByExtended = (dotColX - 24) / maxExtendedCos;
-        final maxRByNearHoriz = maxNearHorizCos > 0
-            ? (dotColX - minHorizForNear) / maxNearHorizCos - minRadialT - popOffset
-            : double.infinity;
-        final extendBuffer = (entries.length / 2).ceil() * labelSpacing * 0.7;
-        final maxR = math.min(
-          math.min(maxRByExtended, maxRByNearHoriz),
-          cy - edgeMargin - popOffset - extendBuffer,
+        // 分类较多时，按"左右两侧 × 上下半区"4 组中标签最多的一组加高画布，
+        // 保证每个标签都有足够垂直空间（超出部分可滚动查看），避免互相覆盖
+        int groupCount(bool isRight, bool isTop) => entries
+            .where((e) => e.isRight == isRight && (math.sin(e.angleRad) < 0) == isTop)
+            .length;
+        final maxGroupCount = math.max(
+          math.max(groupCount(true, true), groupCount(true, false)),
+          math.max(groupCount(false, true), groupCount(false, false)),
         );
-        final outerRadius = math.max(maxR, 55.0);
+        final minChartHForLabels = 2.0 *
+            (maxGroupCount * labelSpacing +
+                labelSpacing / 2 +
+                edgeMargin +
+                8.0 +
+                4.0);
+        final chartH = math.max(math.max(300.0, h), minChartHForLabels);
+        final cy = chartH / 2;
+        final dotColX = w / 2 - edgeMargin - dotRadius - textGap - maxTextW;
+
+        final maxRByWidth = dotColX - 20;
+        final maxRByHeight = cy - edgeMargin - 8;
+        final outerRadius = math.max(math.min(maxRByWidth, maxRByHeight), 55.0);
         final centerRadius = outerRadius * 0.55;
         final sectionRadius = outerRadius - centerRadius;
 
         double minRFor(_PieEntry e) {
           final isTouched = e.index == _touchedIndex;
-          return (isTouched ? outerRadius + popOffset : outerRadius) + minRadialT;
+          return isTouched ? outerRadius + popOffset : outerRadius;
         }
 
         for (final e in entries) {
           e.dotX = e.isRight ? dotColX : -dotColX;
         }
 
-        final rightEntries = entries.where((e) => e.isRight).toList();
-        final leftEntries = entries.where((e) => !e.isRight).toList();
+        // 在 [rangeTop, rangeBot] 范围内摆放一组标签：
+        // 尽量贴近各自扇形的自然高度，间距不够时向两端撑开，最后在半区内垂直居中
+        void positionGroup(List<_PieEntry> group, double rangeTop, double rangeBot) {
+          if (group.isEmpty) return;
+          group.sort((a, b) => a.naturalY.compareTo(b.naturalY));
+
+          group[0].adjustedY = group[0].naturalY.clamp(rangeTop, rangeBot);
+          for (int i = 1; i < group.length; i++) {
+            final minY = group[i - 1].adjustedY! + labelSpacing;
+            group[i].adjustedY =
+                math.max(group[i].naturalY, minY).clamp(rangeTop, rangeBot);
+          }
+
+          if (group.last.adjustedY! >= rangeBot) {
+            group.last.adjustedY = rangeBot;
+            for (int i = group.length - 2; i >= 0; i--) {
+              final maxY = group[i + 1].adjustedY! - labelSpacing;
+              group[i].adjustedY =
+                  math.min(group[i].naturalY, maxY).clamp(rangeTop, rangeBot);
+            }
+          }
+
+          if (group.first.adjustedY! <= rangeTop &&
+              (group.length - 1) * labelSpacing > rangeBot - rangeTop) {
+            final spacing =
+                group.length > 1 ? (rangeBot - rangeTop) / (group.length - 1) : 0.0;
+            for (int i = 0; i < group.length; i++) {
+              group[i].adjustedY =
+                  (rangeTop + i * spacing).clamp(rangeTop, rangeBot);
+            }
+          }
+
+          // 组内垂直居中，充分利用饼图上方和下方的空白
+          final firstY = group.first.adjustedY!;
+          final lastY = group.last.adjustedY!;
+          final wanted = (rangeTop + rangeBot - firstY - lastY) / 2;
+          final shift = wanted.clamp(rangeTop - firstY, rangeBot - lastY);
+          if (shift != 0) {
+            for (final e in group) {
+              e.adjustedY = e.adjustedY! + shift;
+            }
+          }
+        }
 
         void positionLabels(List<_PieEntry> side) {
-          final topLimit = -cy + edgeMargin + 16.0;
-          final bottomLimit = cy - edgeMargin - 16.0;
-
-          final upper = <_PieEntry>[];
-          final lower = <_PieEntry>[];
+          if (side.isEmpty) return;
+          final topLimit = -cy + edgeMargin + 8.0;
+          final bottomLimit = cy - edgeMargin - 8.0;
 
           for (final e in side) {
             final sinA = math.sin(e.angleRad);
             final mr = minRFor(e);
             e.naturalY = mr * sinA;
-            if (sinA.abs() < horizontalAngleThreshold) {
-              e.adjustedY = e.naturalY.clamp(topLimit, bottomLimit);
-            } else if (sinA < 0) {
-              e.adjustedY = e.naturalY;
-              upper.add(e);
-            } else {
-              e.adjustedY = e.naturalY;
-              lower.add(e);
-            }
           }
 
-          upper.sort((a, b) => b.naturalY.compareTo(a.naturalY));
-          for (int i = 1; i < upper.length; i++) {
-            final prev = upper[i - 1];
-            final cur = upper[i];
-            final target = math.min(prev.adjustedY! - labelSpacing, cur.adjustedY!);
-            cur.adjustedY = target.clamp(topLimit, bottomLimit);
-          }
-
-          lower.sort((a, b) => a.naturalY.compareTo(b.naturalY));
-          for (int i = 1; i < lower.length; i++) {
-            final prev = lower[i - 1];
-            final cur = lower[i];
-            final target = math.max(prev.adjustedY! + labelSpacing, cur.adjustedY!);
-            cur.adjustedY = target.clamp(topLimit, bottomLimit);
-          }
-
-          for (int pass = 0; pass < 6; pass++) {
-            bool changed = false;
-            upper.sort((a, b) => a.adjustedY!.compareTo(b.adjustedY!));
-            for (int i = upper.length - 2; i >= 0; i--) {
-              final cur = upper[i];
-              final next = upper[i + 1];
-              final maxY = next.adjustedY! - labelSpacing;
-              if (cur.adjustedY! > maxY) {
-                cur.adjustedY = maxY.clamp(topLimit, bottomLimit);
-                changed = true;
-              }
-            }
-            lower.sort((a, b) => a.adjustedY!.compareTo(b.adjustedY!));
-            for (int i = 1; i < lower.length; i++) {
-              final prev = lower[i - 1];
-              final cur = lower[i];
-              final minY = prev.adjustedY! + labelSpacing;
-              if (cur.adjustedY! < minY) {
-                cur.adjustedY = minY.clamp(topLimit, bottomLimit);
-                changed = true;
-              }
-            }
-            if (!changed) break;
-          }
+          // 按上下半区分组摆放：标签保持在扇形所在的半区，
+          // 引线斜线不会横穿饼图，指向关系一目了然
+          positionGroup(
+              side.where((e) => e.naturalY < 0).toList(), topLimit, -labelSpacing / 2);
+          positionGroup(
+              side.where((e) => e.naturalY >= 0).toList(), labelSpacing / 2, bottomLimit);
         }
 
-        positionLabels(rightEntries);
-        positionLabels(leftEntries);
+        positionLabels(entries.where((e) => e.isRight).toList());
+        positionLabels(entries.where((e) => !e.isRight).toList());
 
         for (final e in entries) {
           final isTouched = e.index == _touchedIndex;
           final touchOuterR = isTouched ? outerRadius + popOffset : outerRadius;
           final sinA = math.sin(e.angleRad);
           final cosA = math.cos(e.angleRad);
+          final dotY = e.adjustedY!;
+          final dotX = e.dotX;
+
           e.startX = touchOuterR * cosA;
           e.startY = touchOuterR * sinA;
 
-          final dy = e.adjustedY!;
-          if (sinA.abs() < horizontalAngleThreshold) {
-            final r = touchOuterR + minRadialT;
-            e.elbowX = r * cosA;
-            e.elbowY = r * sinA;
+          // 引线统一为：沿扇形角度方向延伸一小段到肘点，再一条斜线直连标签圆点，
+          // 每条线独立呈扇形展开，可以清楚追溯标签属于哪块扇形
+          final rMin = touchOuterR + 8.0;
+          e.elbowX = rMin * cosA;
+          e.elbowY = rMin * sinA;
+          e.midX = dotX;
+          e.midY = e.elbowY;
+
+          // 若肘点到圆点的斜线会擦过饼图，则退化为"横向+竖向"三段线绕开饼图
+          final ddx = dotX - e.elbowX;
+          final ddy = dotY - e.elbowY;
+          final len2 = ddx * ddx + ddy * ddy;
+          final double closestDist;
+          if (len2 <= 0.0001) {
+            closestDist = rMin;
           } else {
-            final maxRForX = cosA.abs() > 0.01 ? (dotColX - 6) / cosA.abs() : double.infinity;
-            final r = (dy / sinA).clamp(touchOuterR + minRadialT, maxRForX);
-            e.elbowX = r * cosA;
-            e.elbowY = r * sinA;
+            final t = (-(e.elbowX * ddx + e.elbowY * ddy) / len2).clamp(0.0, 1.0);
+            final px = e.elbowX + t * ddx;
+            final py = e.elbowY + t * ddy;
+            closestDist = math.sqrt(px * px + py * py);
           }
+          e.useThreeSeg = closestDist < outerRadius + 4.0;
         }
 
         final sections = <PieChartSectionData>[];
         final labels = <_PieLabelData>[];
 
+        final titleR = centerRadius + sectionRadius * 0.55;
+
         for (final e in entries) {
           final isTouched = e.index == _touchedIndex;
           final radius = isTouched ? sectionRadius + popOffset : sectionRadius;
-          final showTitle = e.percentage >= 5.0;
           final titleFontSize = e.percentage >= 15.0 ? 12.0 : (e.percentage >= 8.0 ? 11.0 : 10.0);
+          final titleText = '${e.percentage.toStringAsFixed(0)}%';
+
+          // 仅当扇形弧长足以容纳文字时才在扇区内显示百分比，
+          // 避免分类过多时相邻薄扇形的文字互相覆盖
+          final titleTp = TextPainter(
+            text: TextSpan(
+              text: titleText,
+              style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w600),
+            ),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          final arcLen = (e.percentage / 100) * 2 * math.pi * titleR;
+          final showTitle = arcLen > titleTp.width + 8;
 
           sections.add(
             PieChartSectionData(
               value: e.amount,
               color: e.color,
-              title: showTitle ? '${e.percentage.toStringAsFixed(0)}%' : '',
+              title: showTitle ? titleText : '',
               radius: radius,
               titleStyle: TextStyle(
                 fontSize: titleFontSize,
@@ -1005,19 +1023,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             startY: e.startY,
             elbowX: e.elbowX,
             elbowY: e.elbowY,
+            midX: e.dotX,
+            midY: e.elbowY,
             dotX: e.dotX,
             dotY: e.adjustedY!,
             isRight: e.isRight,
+            useThreeSeg: e.useThreeSeg,
           ));
         }
 
-        return SizedBox(
-          height: chartH,
-          width: w,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              PieChart(
+        return SingleChildScrollView(
+          child: SizedBox(
+            height: chartH,
+            width: w,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                PieChart(
                 PieChartData(
                   sections: sections,
                   sectionsSpace: 2,
@@ -1058,18 +1081,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ),
                 ],
               ),
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _PieLeaderPainter(
-                    labels: labels,
-                    lineWidth: lineWidth,
-                    dotRadius: dotRadius,
-                    textGap: textGap,
-                    textStyle: textStyle,
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _PieLeaderPainter(
+                      labels: labels,
+                      lineWidth: lineWidth,
+                      dotRadius: dotRadius,
+                      textGap: textGap,
+                      textStyle: textStyle,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -1089,6 +1113,9 @@ class _PieEntry {
   double startY = 0;
   double elbowX = 0;
   double elbowY = 0;
+  double midX = 0;
+  double midY = 0;
+  bool useThreeSeg = false;
   double naturalY = 0;
   double dotX = 0;
   double? adjustedY;
@@ -1111,9 +1138,12 @@ class _PieLabelData {
   final double startY;
   final double elbowX;
   final double elbowY;
+  final double midX;
+  final double midY;
   final double dotX;
   final double dotY;
   final bool isRight;
+  final bool useThreeSeg;
 
   _PieLabelData({
     required this.text,
@@ -1122,9 +1152,12 @@ class _PieLabelData {
     required this.startY,
     required this.elbowX,
     required this.elbowY,
+    required this.midX,
+    required this.midY,
     required this.dotX,
     required this.dotY,
     required this.isRight,
+    required this.useThreeSeg,
   });
 }
 
@@ -1161,10 +1194,18 @@ class _PieLeaderPainter extends CustomPainter {
 
       final start = Offset(cx + label.startX, cy + label.startY);
       final elbow = Offset(cx + label.elbowX, cy + label.elbowY);
+      final mid = Offset(cx + label.midX, cy + label.midY);
       final dot = Offset(cx + label.dotX, cy + label.dotY);
 
       canvas.drawLine(start, elbow, paint);
-      canvas.drawLine(elbow, dot, paint);
+      if (label.useThreeSeg) {
+        // 斜线会擦过饼图时的绕行方案：横向 + 竖向
+        canvas.drawLine(elbow, mid, paint);
+        canvas.drawLine(mid, dot, paint);
+      } else {
+        // 一条斜线直连标签圆点
+        canvas.drawLine(elbow, dot, paint);
+      }
 
       canvas.drawCircle(dot, dotRadius, dotPaint);
 

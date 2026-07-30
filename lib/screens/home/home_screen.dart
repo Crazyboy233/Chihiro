@@ -6,6 +6,7 @@ import '../../providers/transaction_provider.dart';
 import '../../utils/date_utils.dart' as qx;
 import '../../utils/number_utils.dart';
 import '../transaction/add_transaction_screen.dart';
+import '../search/search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,10 +38,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Chihiro'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.filter_list_outlined),
             onPressed: () {
@@ -66,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildDateSelector(transactionProvider),
               ),
               if (transactionProvider.transactions.isEmpty)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -74,14 +83,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icon(
                           Icons.receipt_long_outlined,
                           size: 64,
-                          color: AppColors.textTertiary,
+                          color: AppColors.tt(context),
                         ),
                         SizedBox(height: 16),
                         Text(
                           '暂无记录',
                           style: TextStyle(
                             fontSize: 16,
-                            color: AppColors.textSecondary,
+                            color: AppColors.ts(context),
                           ),
                         ),
                       ],
@@ -142,9 +151,9 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 qx.DateUtils.formatDayWithWeekday(date),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.textSecondary,
+                  color: AppColors.ts(context),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -154,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   '支出 ¥${NumberUtils.formatCurrency(dailyExpense)}',
                   style: TextStyle(
                     fontSize: 13,
-                    color: AppColors.textSecondary.withValues(alpha: 0.8),
+                    color: AppColors.ts(context).withValues(alpha: 0.8),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -283,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -303,7 +312,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: provider.dateRangeType == 'week' ? Colors.white : AppColors.textSecondary,
+                        color: provider.dateRangeType == 'week' ? Colors.white : AppColors.ts(context),
                       ),
                     ),
                   ),
@@ -324,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: provider.dateRangeType == 'month' ? Colors.white : AppColors.textSecondary,
+                        color: provider.dateRangeType == 'month' ? Colors.white : AppColors.ts(context),
                       ),
                     ),
                   ),
@@ -345,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: provider.dateRangeType == 'year' ? Colors.white : AppColors.textSecondary,
+                        color: provider.dateRangeType == 'year' ? Colors.white : AppColors.ts(context),
                       ),
                     ),
                   ),
@@ -358,7 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 16),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -371,10 +380,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -692,7 +701,7 @@ class _SlidableTransactionItemState extends State<_SlidableTransactionItem> with
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -703,7 +712,7 @@ class _SlidableTransactionItemState extends State<_SlidableTransactionItem> with
                       decoration: BoxDecoration(
                         color: widget.category != null
                             ? Color(int.parse('0xFF${widget.category.color.replaceFirst('#', '')}')).withValues(alpha: 0.1)
-                            : AppColors.divider,
+                            : AppColors.dv(context),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
@@ -720,10 +729,10 @@ class _SlidableTransactionItemState extends State<_SlidableTransactionItem> with
                         children: [
                           Text(
                             widget.category?.name ?? '未分类',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           if (widget.transaction.categoryNote?.isNotEmpty == true || widget.transaction.note?.isNotEmpty == true)
@@ -733,9 +742,9 @@ class _SlidableTransactionItemState extends State<_SlidableTransactionItem> with
                                 [widget.transaction.categoryNote, widget.transaction.note]
                                     .where((e) => e?.isNotEmpty == true)
                                     .join(' · '),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.textSecondary,
+                                  color: AppColors.ts(context),
                                 ),
                               ),
                             ),

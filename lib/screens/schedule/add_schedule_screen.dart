@@ -198,10 +198,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     final color = Color(int.parse('0xFF${_selectedColor!.replaceFirst('#', '')}'));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: AppColors.background,
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -223,7 +221,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: TextFormField(
@@ -256,7 +254,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: TextFormField(
@@ -277,7 +275,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
@@ -346,7 +344,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
@@ -464,7 +462,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Row(
@@ -618,7 +616,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
@@ -663,7 +661,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                   ),
                 ),
               ],
-              Icon(Icons.chevron_right, color: Colors.grey[400], size: 22),
+              Icon(Icons.chevron_right, color: AppColors.ts(context), size: 22),
             ],
           ),
         ),

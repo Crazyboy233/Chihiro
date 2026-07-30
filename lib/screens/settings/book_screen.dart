@@ -23,17 +23,15 @@ class _BookScreenState extends State<BookScreen> {
     final accountId = accountProvider.currentAccount?.id;
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           '账本管理',
-          style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -65,16 +63,16 @@ class _BookScreenState extends State<BookScreen> {
                             children: [
                               Text(
                                 currentBook.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              const Text(
+                              Text(
                                 '当前使用中',
-                                style: TextStyle(fontSize: 13, color: Colors.grey),
+                                style: TextStyle(fontSize: 13, color: AppColors.ts(context)),
                               ),
                             ],
                           ),
@@ -116,9 +114,9 @@ class _BookScreenState extends State<BookScreen> {
           ],
 
           // 所有账本列表
-          const Text(
+          Text(
             '所有账本',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
           ),
           const SizedBox(height: 8),
           _buildCard(
@@ -139,7 +137,7 @@ class _BookScreenState extends State<BookScreen> {
                               Icon(
                                 isCurrent ? Icons.check_circle : Icons.menu_book_outlined,
                                 size: 22,
-                                color: isCurrent ? AppColors.primary : Colors.grey,
+                                color: isCurrent ? AppColors.primary : AppColors.ts(context),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -148,7 +146,7 @@ class _BookScreenState extends State<BookScreen> {
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-                                    color: Colors.black87,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                   ),
                                 ),
                               ),
@@ -183,11 +181,11 @@ class _BookScreenState extends State<BookScreen> {
           ),
 
           const SizedBox(height: 24),
-          const Center(
+          Center(
             child: Text(
               '每个账本拥有独立的数据（记账、日程、打卡）\n可在账本间切换，数据互不影响',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.6),
+              style: TextStyle(fontSize: 12, color: AppColors.ts(context), height: 1.6),
             ),
           ),
         ],
@@ -345,8 +343,8 @@ class _BookScreenState extends State<BookScreen> {
   Widget _buildCard({required Widget child}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey[200]!),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(color: AppColors.ts(context)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: child,
@@ -366,7 +364,7 @@ class _BookScreenState extends State<BookScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: Colors.black87),
+            Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -374,11 +372,11 @@ class _BookScreenState extends State<BookScreen> {
                 children: [
                   Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.ts(context))),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey, size: 22),
+            Icon(Icons.chevron_right, color: AppColors.ts(context), size: 22),
           ],
         ),
       ),

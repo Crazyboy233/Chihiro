@@ -64,7 +64,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(widget.transaction != null ? '编辑账单' : '记一笔'),
         leading: IconButton(
@@ -127,24 +126,24 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     controller: _amountController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '0.00',
                       hintStyle: TextStyle(
                         fontSize: 40,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textTertiary,
+                        color: AppColors.tt(context),
                       ),
                       border: InputBorder.none,
                       prefixText: '¥',
                       prefixStyle: TextStyle(
                         fontSize: 40,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary,
+                        color: AppColors.ts(context),
                       ),
                     ),
                   ),
@@ -155,18 +154,18 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // 提示：长按可拖拽
-                        const Padding(
-                          padding: EdgeInsets.only(left: 4, top: 2, bottom: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4, top: 2, bottom: 8),
                           child: Text(
                             '💡 长按分类可拖拽调整顺序',
-                            style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                            style: TextStyle(fontSize: 11, color: AppColors.tt(context)),
                           ),
                         ),
                         // --- 分类区：独立滚动 ---
@@ -276,9 +275,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           const SizedBox(height: 2),
           Text(
             category.name,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
-              color: AppColors.textSecondary,
+              color: AppColors.ts(context),
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -328,7 +327,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     ? tileColor.withValues(alpha: 0.25)
                     : (isSelected
                         ? tileColor.withValues(alpha: 0.12)
-                        : AppColors.background),
+                        : AppColors.bg(context)),
                 borderRadius: BorderRadius.circular(10),
                 border: isSelected
                     ? Border.all(color: tileColor, width: 2)
@@ -355,9 +354,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   const SizedBox(height: 2),
                   Text(
                     category.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
-                      color: AppColors.textSecondary,
+                      color: AppColors.ts(context),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -400,7 +399,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             color: isSelected
                 ? (_type == 'income' ? AppColors.income : AppColors.expense)
-                : AppColors.textSecondary,
+                : AppColors.ts(context),
           ),
         ),
       ),
@@ -416,7 +415,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: AppColors.textTertiary),
+        Icon(icon, size: 20, color: AppColors.tt(context)),
         const SizedBox(width: 12),
         Expanded(
           child: TextField(
@@ -425,8 +424,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             readOnly: readOnly,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(
-                color: AppColors.textTertiary,
+              hintStyle: TextStyle(
+                color: AppColors.tt(context),
               ),
               border: InputBorder.none,
             ),

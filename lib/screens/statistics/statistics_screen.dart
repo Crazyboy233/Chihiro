@@ -142,7 +142,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('统计'),
       ),
@@ -215,7 +214,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Widget _buildTypeSelector() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -238,7 +237,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   '支出',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _type == 'expense' ? Colors.white : AppColors.textSecondary,
+                    color: _type == 'expense' ? Colors.white : AppColors.ts(context),
                     fontSize: 16,
                     fontWeight: _type == 'expense' ? FontWeight.w600 : FontWeight.normal,
                   ),
@@ -264,7 +263,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   '收入',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _type == 'income' ? Colors.white : AppColors.textSecondary,
+                    color: _type == 'income' ? Colors.white : AppColors.ts(context),
                     fontSize: 16,
                     fontWeight: _type == 'income' ? FontWeight.w600 : FontWeight.normal,
                   ),
@@ -301,7 +300,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           margin: const EdgeInsets.symmetric(vertical: 8),
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -321,7 +320,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: provider.dateRangeType == 'week' ? Colors.white : AppColors.textSecondary,
+                        color: provider.dateRangeType == 'week' ? Colors.white : AppColors.ts(context),
                       ),
                     ),
                   ),
@@ -342,7 +341,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: provider.dateRangeType == 'month' ? Colors.white : AppColors.textSecondary,
+                        color: provider.dateRangeType == 'month' ? Colors.white : AppColors.ts(context),
                       ),
                     ),
                   ),
@@ -363,7 +362,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: provider.dateRangeType == 'year' ? Colors.white : AppColors.textSecondary,
+                        color: provider.dateRangeType == 'year' ? Colors.white : AppColors.ts(context),
                       ),
                     ),
                   ),
@@ -386,7 +385,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: provider.dateRangeType == 'custom' ? Colors.white : AppColors.textSecondary,
+                        color: provider.dateRangeType == 'custom' ? Colors.white : AppColors.ts(context),
                       ),
                     ),
                   ),
@@ -398,7 +397,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -414,10 +413,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 child: Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -534,17 +533,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Center(
           child: Column(
             children: [
-              const Icon(Icons.inbox_outlined, size: 48, color: AppColors.textSecondary),
+              Icon(Icons.inbox_outlined, size: 48, color: AppColors.ts(context)),
               const SizedBox(height: 12),
               Text(
                 '这个日期范围内没有记录',
-                style: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.8)),
+                style: TextStyle(color: AppColors.ts(context).withValues(alpha: 0.8)),
               ),
             ],
           ),
@@ -591,7 +590,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
@@ -620,18 +619,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         children: [
                           Text(
                             entry.key,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           Text(
                             '¥${NumberUtils.formatCurrency(entry.value)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ],
@@ -645,7 +644,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                 Container(
                                   height: 6,
                                   decoration: BoxDecoration(
-                                    color: AppColors.divider,
+                                    color: AppColors.dv(context),
                                     borderRadius: BorderRadius.circular(3),
                                   ),
                                 ),
@@ -669,9 +668,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           const SizedBox(width: 12),
                           Text(
                             '$percentageStr%',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textSecondary,
+                              color: AppColors.ts(context),
                             ),
                           ),
                         ],
@@ -701,9 +700,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.92,
               ),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Column(
                 children: [
@@ -712,7 +711,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     height: 4,
                     margin: const EdgeInsets.only(top: 12, bottom: 8),
                     decoration: BoxDecoration(
-                      color: AppColors.divider,
+                      color: AppColors.dv(context),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -723,14 +722,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       children: [
                         Text(
                           _type == 'income' ? '收入构成' : '支出构成',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                          icon: Icon(Icons.close, color: AppColors.ts(context)),
                           onPressed: () => Navigator.pop(context),
                         ),
                       ],
@@ -741,11 +740,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       child: Center(child: CircularProgressIndicator()),
                     )
                   else if (!snapshot.hasData || snapshot.data!.isEmpty)
-                    const Expanded(
+                    Expanded(
                       child: Center(
                         child: Text(
                           '这个日期范围内没有记录',
-                          style: TextStyle(color: AppColors.textSecondary),
+                          style: TextStyle(color: AppColors.ts(context)),
                         ),
                       ),
                     )
@@ -817,9 +816,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           currentAngle += sweepAngle;
         }
 
-        const textStyle = TextStyle(
+        final textStyle = TextStyle(
           fontSize: 12,
-          color: AppColors.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w500,
         );
 
@@ -1067,16 +1066,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     _type == 'income' ? '总收入' : '总支出',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary.withValues(alpha: 0.8),
+                      color: AppColors.ts(context).withValues(alpha: 0.8),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '¥${NumberUtils.formatCurrency(total)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ],

@@ -24,17 +24,15 @@ class _AccountScreenState extends State<AccountScreen> {
     final accounts = accountProvider.accounts;
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           '账号管理',
-          style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -64,16 +62,16 @@ class _AccountScreenState extends State<AccountScreen> {
                         children: [
                           Text(
                             currentAccount.username,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
-                              color: Colors.black87,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             '当前登录 · 创建于 ${_formatDate(currentAccount.createdAt)}',
-                            style: const TextStyle(fontSize: 13, color: Colors.grey),
+                            style: TextStyle(fontSize: 13, color: AppColors.ts(context)),
                           ),
                         ],
                       ),
@@ -101,9 +99,9 @@ class _AccountScreenState extends State<AccountScreen> {
           ],
 
           // 所有账号列表
-          const Text(
+          Text(
             '所有账号',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
           ),
           const SizedBox(height: 8),
           _buildCard(
@@ -124,7 +122,7 @@ class _AccountScreenState extends State<AccountScreen> {
                               Icon(
                                 isCurrent ? Icons.check_circle : Icons.account_circle_outlined,
                                 size: 22,
-                                color: isCurrent ? AppColors.primary : Colors.grey,
+                                color: isCurrent ? AppColors.primary : AppColors.ts(context),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -133,14 +131,14 @@ class _AccountScreenState extends State<AccountScreen> {
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-                                    color: Colors.black87,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                   ),
                                 ),
                               ),
                               if (!isCurrent)
-                                const Text(
+                                Text(
                                   '点击切换',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                  style: TextStyle(fontSize: 12, color: AppColors.ts(context)),
                                 ),
                             ],
                           ),
@@ -180,10 +178,10 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
 
           const SizedBox(height: 24),
-          const Center(
+          Center(
             child: Text(
               '本地账号 · 数据保存在本地 · 不涉及联网',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: AppColors.ts(context)),
             ),
           ),
         ],
@@ -324,8 +322,8 @@ class _AccountScreenState extends State<AccountScreen> {
   Widget _buildCard({required Widget child}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey[200]!),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(color: AppColors.ts(context)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: child,
@@ -345,7 +343,7 @@ class _AccountScreenState extends State<AccountScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: Colors.black87),
+            Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -353,11 +351,11 @@ class _AccountScreenState extends State<AccountScreen> {
                 children: [
                   Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.ts(context))),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey, size: 22),
+            Icon(Icons.chevron_right, color: AppColors.ts(context), size: 22),
           ],
         ),
       ),

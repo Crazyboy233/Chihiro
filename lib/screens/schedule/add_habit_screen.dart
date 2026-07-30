@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../constants/colors.dart';
 import '../../models/habit_goal.dart';
 import '../../providers/habit_provider.dart';
 
@@ -196,10 +195,8 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
     final color = Color(int.parse('0xFF${_selectedColor.replaceFirst('#', '')}'));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: AppColors.background,
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -221,7 +218,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
@@ -280,7 +277,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: TextFormField(
@@ -304,7 +301,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
@@ -361,7 +358,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
@@ -420,7 +417,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
@@ -495,7 +492,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
@@ -588,7 +585,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../constants/colors.dart';
 import '../../models/category.dart';
 import '../../providers/category_provider.dart';
 
@@ -12,7 +11,6 @@ class CategoryListScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: AppColors.background,
         appBar: AppBar(
           title: const Text('分类管理'),
           bottom: const TabBar(
@@ -46,7 +44,7 @@ class CategoryListScreen extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -69,10 +67,10 @@ class CategoryListScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   category.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),

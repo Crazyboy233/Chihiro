@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../constants/colors.dart';
 import '../../utils/data_backup.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/book_provider.dart';
@@ -300,12 +301,10 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
     final ap = context.watch<AccountProvider>();
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
-        title: const Text('数据管理', style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
+        title: Text('数据管理', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: _isLoading
@@ -331,14 +330,14 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
               const SizedBox(height: 16),
               _buildSectionTitle('📁 备份文件位置'), const SizedBox(height: 8),
               _buildCard(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('文件保存在公共 Download 目录下，在文件管理器中直接可见：', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                Text('文件保存在公共 Download 目录下，在文件管理器中直接可见：', style: TextStyle(fontSize: 13, color: AppColors.ts(context))),
                 const SizedBox(height: 10),
                 Container(
                   width: double.infinity, padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[300]!)),
+                  decoration: BoxDecoration(color: AppColors.ts(context).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.ts(context))),
                   child: Row(children: [
                     Expanded(child: Text(_backupPath ?? '/storage/emulated/0/Download/ChihiroBackup', style: const TextStyle(fontSize: 13, fontFamily: 'monospace'))),
-                    IconButton(icon: const Icon(Icons.copy, color: Colors.black87, size: 20), onPressed: () async {
+                    IconButton(icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.onSurface, size: 20), onPressed: () async {
                       final path = _backupPath ?? await DataBackup.getBackupDirectoryPath();
                       await Clipboard.setData(ClipboardData(text: path));
                       if (mounted) _showMsg('✅ 路径已复制');
@@ -349,14 +348,14 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
-                  child: const Row(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('⚠️ ', style: TextStyle(fontSize: 13)),
+                      const Text('⚠️ ', style: TextStyle(fontSize: 13)),
                       Expanded(
                         child: Text(
                           '请勿修改导出文件的文件名，否则导入时将无法通过账本名判断是否为当前账本的备份。',
-                          style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.5),
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface, height: 1.5),
                         ),
                       ),
                     ],
@@ -366,8 +365,8 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(8)),
-                  child: const Text('💡 换机提示：在旧手机上导出备份 → 通过微信/QQ/蓝牙等把文件发送到新手机 → 新手机安装 Chihiro → 在新手机上点「从手机选择文件导入」即可。',
-                      style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.5)),
+                  child: Text('💡 换机提示：在旧手机上导出备份 → 通过微信/QQ/蓝牙等把文件发送到新手机 → 新手机安装 Chihiro → 在新手机上点「从手机选择文件导入」即可。',
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface, height: 1.5)),
                 ),
               ]))),
               const SizedBox(height: 24),
@@ -375,8 +374,8 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String t) => Text(t, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87));
-  Widget _buildCard({required Widget child}) => Container(decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey[200]!), borderRadius: BorderRadius.circular(12)), child: child);
+  Widget _buildSectionTitle(String t) => Text(t, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface));
+  Widget _buildCard({required Widget child}) => Container(decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border.all(color: AppColors.ts(context)), borderRadius: BorderRadius.circular(12)), child: child);
 
   Widget _buildListTile(IconData icon, String title, String subtitle, VoidCallback onTap, {bool highlight = false}) {
     return InkWell(
@@ -385,14 +384,14 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: highlight ? BoxDecoration(color: Colors.green[50], borderRadius: BorderRadius.circular(12)) : null,
         child: Row(children: [
-          Icon(icon, size: 22, color: highlight ? Colors.green[700] : Colors.black87),
+          Icon(icon, size: 22, color: highlight ? Colors.green[700] : Theme.of(context).colorScheme.onSurface),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: highlight ? Colors.green[700] : Colors.black87)),
+            Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: highlight ? Colors.green[700] : Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 2),
-            Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.ts(context))),
           ])),
-          const Icon(Icons.chevron_right, color: Colors.grey, size: 22),
+          Icon(Icons.chevron_right, color: AppColors.ts(context), size: 22),
         ]),
       ),
     );

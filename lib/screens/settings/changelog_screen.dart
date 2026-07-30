@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/colors.dart';
 
 // ============== 版本更新说明数据 ==============
 class ChangelogEntry {
@@ -17,7 +18,7 @@ class ChangelogEntry {
   });
 }
 
-// 在这里添加新版本的更新说明
+// 在这里��加新版本的更新说明
 const List<ChangelogEntry> changelog = [
   ChangelogEntry(
     version: 'V2.0.0',
@@ -131,13 +132,11 @@ class ChangelogScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
+        title: Text(
           '更新说明',
-          style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -147,17 +146,17 @@ class ChangelogScreen extends StatelessWidget {
         separatorBuilder: (context, index) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           final entry = changelog[index];
-          return _buildVersionCard(entry);
+          return _buildVersionCard(context, entry);
         },
       ),
     );
   }
 
-  Widget _buildVersionCard(ChangelogEntry entry) {
+  Widget _buildVersionCard(BuildContext context, ChangelogEntry entry) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey[200]!),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(color: AppColors.ts(context)),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -171,16 +170,16 @@ class ChangelogScreen extends StatelessWidget {
             children: [
               Text(
                 entry.version,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(width: 12),
               Text(
                 entry.date,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: AppColors.ts(context)),
               ),
             ],
           ),
@@ -193,7 +192,7 @@ class ChangelogScreen extends StatelessWidget {
               color: Color(0xFF6366F1),
             ),
             const SizedBox(height: 8),
-            ...entry.newFeatures.map((item) => _buildItem(item)),
+            ...entry.newFeatures.map((item) => _buildItem(context, item)),
             const SizedBox(height: 4),
           ],
 
@@ -205,7 +204,7 @@ class ChangelogScreen extends StatelessWidget {
               color: Color(0xFF10B981),
             ),
             const SizedBox(height: 8),
-            ...entry.optimizations.map((item) => _buildItem(item)),
+            ...entry.optimizations.map((item) => _buildItem(context, item)),
           ],
 
           // 修复bug
@@ -216,14 +215,14 @@ class ChangelogScreen extends StatelessWidget {
               color: Color(0xFFEF4444),
             ),
             const SizedBox(height: 8),
-            ...entry.bugFixes.map((item) => _buildItem(item)),
+            ...entry.bugFixes.map((item) => _buildItem(context, item)),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildItem(String text) {
+  Widget _buildItem(BuildContext context, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -234,8 +233,8 @@ class ChangelogScreen extends StatelessWidget {
             child: Container(
               width: 4,
               height: 4,
-              decoration: const BoxDecoration(
-                color: Colors.grey,
+              decoration: BoxDecoration(
+                color: AppColors.ts(context),
                 shape: BoxShape.circle,
               ),
             ),
@@ -244,10 +243,10 @@ class ChangelogScreen extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.5,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),

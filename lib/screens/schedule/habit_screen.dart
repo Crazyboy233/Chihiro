@@ -30,7 +30,6 @@ class _HabitScreenState extends State<HabitScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: _buildAppBar(),
       body: Consumer<HabitProvider>(
         builder: (context, habitProvider, child) {
@@ -54,17 +53,18 @@ class _HabitScreenState extends State<HabitScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final cs = Theme.of(context).colorScheme;
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: cs.surface,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.menu, color: Colors.black87),
+        icon: Icon(Icons.menu, color: cs.onSurface),
         onPressed: () {},
       ),
-      title: const Text(
+      title: Text(
         '打卡',
         style: TextStyle(
-          color: Colors.black87,
+          color: cs.onSurface,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
@@ -72,7 +72,7 @@ class _HabitScreenState extends State<HabitScreen> {
       centerTitle: true,
       actions: [
         IconButton(
-          icon: const Icon(Icons.search, color: Colors.black87),
+          icon: Icon(Icons.search, color: cs.onSurface),
           onPressed: () {},
         ),
       ],
@@ -89,11 +89,11 @@ class _HabitScreenState extends State<HabitScreen> {
         // 打卡日历
         Container(
           padding: const EdgeInsets.all(16),
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           child: _buildHabitCalendar(habitProvider),
         ),
         // 分隔线
-        Container(height: 8, color: AppColors.background),
+        Container(height: 8, color: AppColors.bg(context)),
         // 打卡目标列表
         Expanded(
           child: _buildHabitList(habitProvider),
@@ -111,10 +111,10 @@ class _HabitScreenState extends State<HabitScreen> {
           children: [
             Text(
               '${_habitFocusedDay.year}年${_habitFocusedDay.month}月',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             Row(
@@ -185,7 +185,7 @@ class _HabitScreenState extends State<HabitScreen> {
             cellMargin: const EdgeInsets.all(0),
             cellPadding: const EdgeInsets.all(0),
             outsideDaysVisible: true,
-            defaultDecoration: BoxDecoration(color: Colors.grey[50]),
+            defaultDecoration: BoxDecoration(color: AppColors.ts(context)),
           ),
           daysOfWeekHeight: 24,
           rowHeight: 60,
@@ -267,7 +267,7 @@ class _HabitScreenState extends State<HabitScreen> {
         backgroundColor = goalColor.withValues(alpha: 0.18);
       }
     } else {
-      backgroundColor = Colors.white;
+      backgroundColor = Theme.of(context).colorScheme.surface;
     }
 
     // 节假日信息
@@ -282,7 +282,7 @@ class _HabitScreenState extends State<HabitScreen> {
     if (isSelected) {
       dayColor = Colors.white;
     } else if (isOutside) {
-      dayColor = Colors.grey[400]!;
+      dayColor = AppColors.ts(context);
     } else if (hasCompletedHabits) {
       dayColor = Colors.white;
     } else if (isHoliday) {
@@ -290,7 +290,7 @@ class _HabitScreenState extends State<HabitScreen> {
     } else if (isWeekend) {
       dayColor = Colors.orange[700]!;
     } else {
-      dayColor = Colors.black87;
+      dayColor = Theme.of(context).colorScheme.onSurface;
     }
 
     // 周数（仅周一显示）
@@ -358,7 +358,7 @@ class _HabitScreenState extends State<HabitScreen> {
                       ? Colors.white70
                       : hasCompletedHabits
                           ? Colors.white70
-                          : Colors.grey[500],
+                          : AppColors.ts(context),
                 ),
               ),
             ),
@@ -399,7 +399,7 @@ class _HabitScreenState extends State<HabitScreen> {
                             ? Colors.white70
                             : isHoliday
                                 ? Colors.green[700]
-                                : Colors.grey[600],
+                                : AppColors.ts(context),
                   ),
                 ),
               ),
@@ -430,14 +430,14 @@ class _HabitScreenState extends State<HabitScreen> {
             Icon(
               Icons.fitness_center_outlined,
               size: 64,
-              color: Colors.grey[400],
+              color: AppColors.ts(context),
             ),
             const SizedBox(height: 16),
             Text(
               hasAnyGoal ? '今天没有打卡目标' : '还没有打卡目标',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: AppColors.ts(context),
               ),
             ),
             const SizedBox(height: 8),
@@ -445,7 +445,7 @@ class _HabitScreenState extends State<HabitScreen> {
               hasAnyGoal ? '选一个其他日期看看' : '点击右下角的 + 添加目标',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: AppColors.ts(context),
               ),
             ),
           ],
@@ -513,10 +513,10 @@ class _HabitScreenState extends State<HabitScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isCompleted ? completedBg : Colors.white,
+          color: isCompleted ? completedBg : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isCompleted ? completedBorder : Colors.grey[200]!,
+            color: isCompleted ? completedBorder : AppColors.ts(context),
             width: 2,
           ),
         ),
@@ -546,7 +546,7 @@ class _HabitScreenState extends State<HabitScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: isCompleted ? completedText : Colors.black87,
+                      color: isCompleted ? completedText : Theme.of(context).colorScheme.onSurface,
                       decoration: isCompleted ? TextDecoration.lineThrough : null,
                     ),
                   ),
@@ -555,7 +555,7 @@ class _HabitScreenState extends State<HabitScreen> {
                     _getFrequencyLabel(goal),
                     style: TextStyle(
                       fontSize: 13,
-                      color: isCompleted ? completedText.withValues(alpha: 0.75) : Colors.grey[500],
+                      color: isCompleted ? completedText.withValues(alpha: 0.75) : AppColors.ts(context),
                     ),
                   ),
                   if (goal.description != null && goal.description!.isNotEmpty)
@@ -565,7 +565,7 @@ class _HabitScreenState extends State<HabitScreen> {
                         goal.description!,
                         style: TextStyle(
                           fontSize: 13,
-                          color: isCompleted ? completedText.withValues(alpha: 0.75) : Colors.grey[600],
+                          color: isCompleted ? completedText.withValues(alpha: 0.75) : AppColors.ts(context),
                         ),
                       ),
                     ),
@@ -582,16 +582,16 @@ class _HabitScreenState extends State<HabitScreen> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: isCompleted ? color : Colors.white,
+                  color: isCompleted ? color : Theme.of(context).colorScheme.surface,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isCompleted ? color : Colors.grey[400]!,
+                    color: isCompleted ? color : AppColors.ts(context),
                     width: 2,
                   ),
                 ),
                 child: isCompleted
                     ? const Icon(Icons.check, color: Colors.white, size: 22)
-                    : const Icon(Icons.circle_outlined, color: Colors.grey, size: 22),
+                    : Icon(Icons.circle_outlined, color: AppColors.ts(context), size: 22),
               ),
             ),
           ],
@@ -656,10 +656,11 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final color = Color(int.parse('0xFF${widget.goal.color.replaceFirst('#', '')}'));
 
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: cs.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -697,7 +698,7 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
                       const SizedBox(height: 2),
                       Text(
                         _getFrequencyLabelForDialog(widget.goal),
-                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 13, color: AppColors.ts(context)),
                       ),
                     ],
                   ),
@@ -805,10 +806,10 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
               children: [
                 _buildLegend(color, '已打卡', true),
                 const SizedBox(width: 16),
-                _buildLegend(Colors.grey[300]!, '未打卡', false),
+                _buildLegend(AppColors.ts(context), '未打卡', false),
                 const SizedBox(width: 16),
                 _buildLegend(color.withValues(alpha: 0.15), '该日无需打卡', false,
-                    borderColor: Colors.grey[200]!),
+                    borderColor: AppColors.ts(context)),
               ],
             ),
             const SizedBox(height: 8),
@@ -885,18 +886,18 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
 
               if (isOutside) {
                 bgColor = Colors.transparent;
-                textColor = Colors.grey[300]!;
+                textColor = AppColors.ts(context);
               } else if (!shouldShow) {
                 // 该目标在这一天无需打卡（比如周末、工作日频率等）
                 bgColor = color.withValues(alpha: 0.08);
-                textColor = Colors.grey[400]!;
+                textColor = AppColors.ts(context);
               } else if (isCompleted) {
                 bgColor = color;
                 textColor = Colors.white;
               } else {
-                bgColor = Colors.white;
-                textColor = Colors.black87;
-                borderColor = Colors.grey[200];
+                bgColor = Theme.of(context).colorScheme.surface;
+                textColor = Theme.of(context).colorScheme.onSurface;
+                borderColor = AppColors.ts(context);
               }
 
               return Expanded(
@@ -950,7 +951,7 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
               : null,
         ),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+        Text(label, style: TextStyle(fontSize: 12, color: AppColors.ts(context))),
       ],
     );
   }
@@ -1000,13 +1001,13 @@ class _GoalDetailDialogState extends State<_GoalDetailDialog> {
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.bold,
-            color: color ?? Colors.black87,
+            color: color ?? Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 12, color: AppColors.ts(context)),
         ),
       ],
     );

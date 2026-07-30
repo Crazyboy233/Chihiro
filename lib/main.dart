@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'constants/colors.dart';
 import 'constants/routes.dart';
+import 'constants/theme.dart';
 import 'providers/category_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/schedule_provider.dart';
 import 'providers/habit_provider.dart';
 import 'providers/account_provider.dart';
 import 'providers/book_provider.dart';
+import 'providers/theme_provider.dart';
 import 'services/auth_service.dart';
 import 'utils/db_helper.dart';
 import 'screens/home/home_screen.dart';
@@ -36,50 +37,32 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => HabitProvider()),
         ChangeNotifierProvider(create: (_) => AccountProvider()),
         ChangeNotifierProvider(create: (_) => BookProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()..load()),
       ],
-      child: MaterialApp(
-        title: 'Chihiro',
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const [
-          Locale('zh', 'CN'),
-          Locale('en', 'US'),
-        ],
-        locale: const Locale('zh', 'CN'),
-        theme: ThemeData(
-          primarySwatch: Colors.indigo,
-          scaffoldBackgroundColor: AppColors.background,
-          appBarTheme: const AppBarTheme(
-            backgroundColor: AppColors.primary,
-            elevation: 0,
-            centerTitle: true,
-          ),
-          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-            selectedItemColor: AppColors.primary,
-            unselectedItemColor: AppColors.textSecondary,
-            type: BottomNavigationBarType.fixed,
-          ),
-          cardTheme: CardThemeData(
-            color: AppColors.surface,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          floatingActionButtonTheme: const FloatingActionButtonThemeData(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-          ),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) => MaterialApp(
+          title: 'Chihiro',
+          debugShowCheckedModeBanner: false,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('zh', 'CN'),
+            Locale('en', 'US'),
+          ],
+          locale: const Locale('zh', 'CN'),
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          initialRoute: AppRoutes.home,
+          routes: {
+            AppRoutes.home: (context) => const AppShell(),
+            AppRoutes.categoryList: (context) => const CategoryListScreen(),
+            AppRoutes.statistics: (context) => const StatisticsScreen(),
+          },
         ),
-        initialRoute: AppRoutes.home,
-        routes: {
-          AppRoutes.home: (context) => const AppShell(),
-          AppRoutes.categoryList: (context) => const CategoryListScreen(),
-          AppRoutes.statistics: (context) => const StatisticsScreen(),
-        },
       ),
     );
   }

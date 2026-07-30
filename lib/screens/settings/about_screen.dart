@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/colors.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -6,17 +7,15 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           '说明',
-          style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -24,7 +23,7 @@ class AboutScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           // =============== 联网情况 ===============
-          _buildSection(
+          _buildSection(context,
             icon: Icons.wifi_find_outlined,
             title: '联网情况',
             children: const [
@@ -35,8 +34,8 @@ class AboutScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // =============== 数据收集情况 ===============
-          _buildSection(
+          // =============== 数据收集���况 ===============
+          _buildSection(context,
             icon: Icons.privacy_tip_outlined,
             title: '数据收集情况',
             children: const [
@@ -49,7 +48,7 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 12),
 
           // =============== 数据安全 ===============
-          _buildSection(
+          _buildSection(context,
             icon: Icons.security,
             title: '数据安全',
             children: const [
@@ -63,19 +62,19 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 12),
 
           // =============== 数据结构 ===============
-          _buildSection(
+          _buildSection(context,
             icon: Icons.account_tree_outlined,
             title: '数据结构',
             children: const [
               _BulletPoint(text: '📒 账单（记账记录）→ 与「账本」绑定，切换账本会切换账单数据，不同账本的账单完全独立。'),
               _BulletPoint(text: '📅 日程 + ✅ 打卡 → 与「账号」绑定，切换账号会切换日程和打卡数据。'),
-              _BulletPoint(text: '💡 示例：在同一账号下创建「日常」和「旅行」两个账本，日常账单和旅行账单互不影响，但日程和打卡是共享的。'),
+              _BulletPoint(text: '💡 示例：在��一账号下创建「日常」和「旅行」两个账本，日常账单和旅行账单互不影响，但日程和打卡是共享的。'),
             ],
           ),
           const SizedBox(height: 12),
 
           // =============== 权限说明 ===============
-          _buildSection(
+          _buildSection(context,
             icon: Icons.perm_device_information,
             title: '权限说明',
             children: const [
@@ -86,7 +85,7 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 12),
 
           // =============== 版本与包名 ===============
-          _buildSection(
+          _buildSection(context,
             icon: Icons.verified_user_outlined,
             title: '应用信息',
             children: const [
@@ -102,15 +101,15 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSection({
+  Widget _buildSection(BuildContext context, {
     required IconData icon,
     required String title,
     required List<Widget> children,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey[200]!),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(color: AppColors.ts(context)),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -119,11 +118,11 @@ class AboutScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: Colors.black87),
+              Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurface),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
@@ -145,7 +144,7 @@ class _BulletPoint extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+        style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface, height: 1.5),
       ),
     );
   }
@@ -167,14 +166,14 @@ class _BulletText extends StatelessWidget {
             width: 70,
             child: Text(
               label,
-              style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 14, color: AppColors.ts(context), fontWeight: FontWeight.w500),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+              style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface, height: 1.5),
             ),
           ),
         ],

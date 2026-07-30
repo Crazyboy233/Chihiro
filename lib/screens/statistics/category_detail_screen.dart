@@ -30,7 +30,6 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(widget.category.name),
       ),
@@ -68,7 +67,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -91,18 +90,18 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
               children: [
                 Text(
                   widget.category.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '共 $count 笔记录',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: AppColors.textSecondary,
+                    color: AppColors.ts(context),
                   ),
                 ),
               ],
@@ -122,9 +121,9 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
               const SizedBox(height: 2),
               Text(
                 widget.type == 'income' ? '收入' : '支出',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textSecondary,
+                  color: AppColors.ts(context),
                 ),
               ),
             ],
@@ -139,11 +138,11 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.inbox_outlined, size: 64, color: AppColors.textSecondary),
+          Icon(Icons.inbox_outlined, size: 64, color: AppColors.ts(context)),
           const SizedBox(height: 16),
           Text(
             '所选日期范围内没有记录',
-            style: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.8)),
+            style: TextStyle(color: AppColors.ts(context).withValues(alpha: 0.8)),
           ),
         ],
       ),
@@ -181,7 +180,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -194,10 +193,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
               children: [
                 Text(
                   _formatDateLabel(date),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
+                    color: AppColors.ts(context),
                   ),
                 ),
                 Text(
@@ -245,28 +244,28 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                               padding: EdgeInsets.only(top: categoryNote.isNotEmpty ? 4 : 0),
                               child: Text(
                                 personalNote,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
-                                  color: AppColors.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   height: 1.3,
                                 ),
                               ),
                             ),
                         ] else
-                          const Text(
+                          Text(
                             '无备注',
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppColors.textSecondary,
+                              color: AppColors.ts(context),
                               fontStyle: FontStyle.italic,
                             ),
                           ),
                         const SizedBox(height: 4),
                         Text(
                           _formatTime(tx['created_at'] as String?),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textSecondary,
+                            color: AppColors.ts(context),
                           ),
                         ),
                       ],
@@ -274,10 +273,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                   ),
                   Text(
                     '¥${NumberUtils.formatCurrency(tx['amount'] as double)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ],

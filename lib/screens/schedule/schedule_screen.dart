@@ -151,7 +151,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: _buildAppBar(),
       body: Consumer<ScheduleProvider>(
         builder: (context, scheduleProvider, child) {
@@ -178,19 +177,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final cs = Theme.of(context).colorScheme;
     return PreferredSize(
       preferredSize: const Size.fromHeight(56),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(bottom: BorderSide(color: Colors.grey[200]!, width: 0.5)),
+          color: cs.surface,
+          border: Border(bottom: BorderSide(color: AppColors.ts(context), width: 0.5)),
         ),
         child: SafeArea(
           child: Row(
             children: [
               // 上个月
               IconButton(
-                icon: Icon(Icons.chevron_left, color: Colors.grey[700], size: 28),
+                icon: Icon(Icons.chevron_left, color: AppColors.ts(context), size: 28),
                 onPressed: () => _goToPreviousMonth(),
               ),
               const Spacer(),
@@ -203,26 +203,26 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   children: [
                     Text(
                       '${_focusedDay.year}.${_focusedDay.month.toString().padLeft(2, '0')}',
-                      style: const TextStyle(
-                        color: Colors.black87,
+                      style: TextStyle(
+                        color: cs.onSurface,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Icon(Icons.arrow_drop_down, color: Colors.grey[700]),
+                    Icon(Icons.arrow_drop_down, color: AppColors.ts(context)),
                   ],
                 ),
               ),
               const Spacer(),
               // 下个月
               IconButton(
-                icon: Icon(Icons.chevron_right, color: Colors.grey[700], size: 28),
+                icon: Icon(Icons.chevron_right, color: AppColors.ts(context), size: 28),
                 onPressed: () => _goToNextMonth(),
               ),
               // 搜索
               IconButton(
-                icon: Icon(Icons.search, color: Colors.grey[700]),
+                icon: Icon(Icons.search, color: AppColors.ts(context)),
                 onPressed: () {},
               ),
             ],
@@ -256,7 +256,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return Container(
       height: 40,
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!, width: 0.5)),
+        border: Border(bottom: BorderSide(color: AppColors.ts(context), width: 0.5)),
       ),
       child: Row(
         children: List.generate(7, (index) {
@@ -268,7 +268,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 weekdays[index],
                 style: TextStyle(
                   fontSize: 14,
-                  color: isWeekend ? Colors.orange : Colors.grey[600],
+                  color: isWeekend ? Colors.orange : AppColors.ts(context),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -397,7 +397,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!, width: 0.5)),
+        border: Border(bottom: BorderSide(color: AppColors.ts(context), width: 0.5)),
       ),
       child: Stack(
         children: [
@@ -475,6 +475,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     DateTime currentMonth, {
     int? weekNumber,
   }) {
+    final cs = Theme.of(context).colorScheme;
     final isCurrentMonth = day.month == currentMonth.month && day.year == currentMonth.year;
     final isWeekend = day.weekday == DateTime.sunday || day.weekday == DateTime.saturday;
     final isToday = isSameDay(day, DateTime.now());
@@ -487,12 +488,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     Color getDateColor() {
       if (isSelected) return Colors.white;
-      if (!isCurrentMonth) return Colors.grey[400]!;
+      if (!isCurrentMonth) return AppColors.ts(context);
       if (isToday) return AppColors.primary;
       // 节假日显示绿色
       if (isPublicHoliday) return Colors.green[700]!;
       if (isWeekend) return Colors.orange;
-      return Colors.black87;
+      return cs.onSurface;
     }
 
     return GestureDetector(
@@ -507,7 +508,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
           border: Border(
-            right: BorderSide(color: Colors.grey[200]!, width: 0.5),
+            right: BorderSide(color: AppColors.ts(context), width: 0.5),
           ),
         ),
         child: Column(
@@ -530,7 +531,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           '第$weekNumber周',
                           style: TextStyle(
                             fontSize: 9,
-                            color: Colors.grey[500],
+                            color: AppColors.ts(context),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -688,7 +689,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         Text(
           '+$remaining',
           style: TextStyle(
-            color: Colors.grey[500],
+            color: AppColors.ts(context),
             fontSize: rowHeight > 100 ? 10 : 9,
             fontWeight: FontWeight.w500,
           ),
@@ -706,6 +707,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   void _showDayDetails(DateTime day, ScheduleProvider scheduleProvider) {
+    final cs = Theme.of(context).colorScheme;
     final isToday = isSameDay(day, DateTime.now());
     final weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
     final holidayInfo = HolidayService().getHolidayInfo(day);
@@ -726,8 +728,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.85,
               ),
-              decoration: const BoxDecoration(
-                color: AppColors.background,
+              decoration: BoxDecoration(
+                color: cs.surface,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Column(
@@ -739,7 +741,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: AppColors.ts(context),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -806,7 +808,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                       '共 ${daySchedules.length} 项日程',
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: Colors.grey[600],
+                                        color: AppColors.ts(context),
                                       ),
                                     ),
                                 ],
@@ -902,14 +904,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           Icon(
             Icons.event_available,
             size: 64,
-            color: Colors.grey[300],
+            color: AppColors.ts(context),
           ),
           const SizedBox(height: 14),
           Text(
             '这一天还没有安排',
             style: TextStyle(
               fontSize: 15,
-              color: Colors.grey[600],
+              color: AppColors.ts(context),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -918,7 +920,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             '点击下方按钮开始规划吧',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[400],
+              color: AppColors.ts(context),
             ),
           ),
         ],
@@ -927,6 +929,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _buildScheduleDetailCard(Schedule schedule, DateTime day, ScheduleProvider scheduleProvider) {
+    final cs = Theme.of(context).colorScheme;
     final color = schedule.color != null
         ? Color(int.parse('0xFF${schedule.color!.replaceFirst('#', '')}'))
         : const Color(0xFFFFB74D);
@@ -966,9 +969,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!, width: 1),
+          border: Border.all(color: AppColors.ts(context), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
@@ -1057,7 +1060,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             Icon(
                               Icons.edit_note,
                               size: 16,
-                              color: Colors.grey[500],
+                              color: AppColors.ts(context),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -1065,7 +1068,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                 schedule.description!,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.grey[700],
+                                  color: AppColors.ts(context),
                                   height: 1.4,
                                 ),
                               ),
@@ -1166,6 +1169,7 @@ class _YearMonthPickerDialogState extends State<_YearMonthPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final totalYears = widget.maxYear - widget.minYear + 1;
     final totalRows = (totalYears / 2).ceil();
 
@@ -1191,20 +1195,20 @@ class _YearMonthPickerDialogState extends State<_YearMonthPickerDialog> {
             const SizedBox(height: 12),
 
             // 年份
-            const Text(
+            Text(
               '年份',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: TextStyle(fontSize: 14, color: AppColors.ts(context)),
             ),
             const SizedBox(height: 8),
             Container(
               constraints: const BoxConstraints(maxHeight: 140),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: cs.surface,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: RawScrollbar(
                 controller: _yearScrollController,
-                thumbColor: Colors.grey[400],
+                thumbColor: AppColors.ts(context),
                 radius: const Radius.circular(4),
                 thickness: 3,
                 child: SingleChildScrollView(
@@ -1243,14 +1247,14 @@ class _YearMonthPickerDialogState extends State<_YearMonthPickerDialog> {
             const SizedBox(height: 14),
 
             // 月份（固定 4x3 网格）
-            const Text(
+            Text(
               '月份',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: TextStyle(fontSize: 14, color: AppColors.ts(context)),
             ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: cs.surface,
                 borderRadius: BorderRadius.circular(10),
               ),
               padding: const EdgeInsets.all(8),
@@ -1312,6 +1316,7 @@ class _YearMonthPickerDialogState extends State<_YearMonthPickerDialog> {
   }
 
   Widget _buildYearButton(int year) {
+    final cs = Theme.of(context).colorScheme;
     final isSelected = year == _pickYear;
     return GestureDetector(
       onTap: () {
@@ -1321,10 +1326,10 @@ class _YearMonthPickerDialogState extends State<_YearMonthPickerDialog> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
+          color: isSelected ? AppColors.primary : cs.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.grey[300]!,
+            color: isSelected ? AppColors.primary : AppColors.ts(context),
             width: 1,
           ),
         ),
@@ -1334,7 +1339,7 @@ class _YearMonthPickerDialogState extends State<_YearMonthPickerDialog> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : Colors.black87,
+            color: isSelected ? Colors.white : cs.onSurface,
           ),
         ),
       ),
@@ -1342,6 +1347,7 @@ class _YearMonthPickerDialogState extends State<_YearMonthPickerDialog> {
   }
 
   Widget _buildMonthButton(int month) {
+    final cs = Theme.of(context).colorScheme;
     final isSelected = month == _pickMonth;
     final label = widget.months[month - 1];
     return GestureDetector(
@@ -1352,10 +1358,10 @@ class _YearMonthPickerDialogState extends State<_YearMonthPickerDialog> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
+          color: isSelected ? AppColors.primary : cs.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.grey[300]!,
+            color: isSelected ? AppColors.primary : AppColors.ts(context),
             width: 1,
           ),
         ),
@@ -1366,7 +1372,7 @@ class _YearMonthPickerDialogState extends State<_YearMonthPickerDialog> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : Colors.black87,
+            color: isSelected ? Colors.white : cs.onSurface,
           ),
         ),
       ),

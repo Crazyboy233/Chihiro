@@ -72,6 +72,22 @@ class DatabaseService {
     return List.generate(maps.length, (i) => Transaction.fromMap(maps[i]));
   }
 
+  /// 搜索记账记录（关键字搜索：分类名称、分类备注、备注）
+  /// 不受日期范围限制，搜索当前账本所有记录
+  Future<List<Transaction>> searchTransactions(String keyword) async {
+    final db = await DBHelper.instance.database;
+    final pattern = '%$keyword%';
+
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT t.* FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE c.name LIKE ? OR t.category_note LIKE ? OR t.note LIKE ?
+      ORDER BY t.date DESC, t.created_at DESC
+    ''', [pattern, pattern, pattern]);
+
+    return List.generate(maps.length, (i) => Transaction.fromMap(maps[i]));
+  }
+
   Future<Map<String, double>> getSummaryByDateRange(DateTime startDate, DateTime endDate) async {
     final db = await DBHelper.instance.database;
     final startStr = startDate.toIso8601String().split('T')[0];

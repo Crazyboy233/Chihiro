@@ -16,7 +16,7 @@ import '../auth/login_screen.dart';
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
-  static const String appVersion = '2.0.0';
+  static const String appVersion = '2.1.0';
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();

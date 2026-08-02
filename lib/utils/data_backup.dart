@@ -20,10 +20,11 @@ class DataBackup {
   // 账本级表（仅账单）
   static const List<String> _bookTables = ['categories', 'transactions'];
 
-  // 账号级表（日程、打卡）
+  // 账号级表（日程、打卡、倒数日）
   static const List<String> _accountTables = [
     'schedule_categories', 'schedules',
     'habit_goals', 'habit_records',
+    'countdown_days',
   ];
 
   // ============================================================
@@ -415,8 +416,9 @@ class DataBackup {
         idMappings[table] = mapping;
       }
 
-      // ===== 明细表（transactions, schedules, habit_records） =====
-      for (final table in ['transactions', 'schedules', 'habit_records']) {
+      // ===== 明细表（transactions, schedules, habit_records, countdown_days） =====
+      // countdown_days 无外键，按明细表直接追加导入即可
+      for (final table in ['transactions', 'schedules', 'habit_records', 'countdown_days']) {
         final rows = tables[table] as List<dynamic>?;
         if (rows == null || rows.isEmpty) continue;
 

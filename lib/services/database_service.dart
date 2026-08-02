@@ -1,6 +1,7 @@
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../models/schedule.dart';
+import '../models/countdown_day.dart';
 import '../models/habit_goal.dart';
 import '../models/habit_record.dart';
 import '../utils/db_helper.dart';
@@ -291,5 +292,40 @@ class DatabaseService {
       where: 'id = ?',
       whereArgs: [record.id],
     );
+  }
+
+  // ============ 倒数日 ============
+
+  Future<int> insertCountdownDay(CountdownDay day) async {
+    final db = await DBHelper.instance.accountDatabase;
+    return await db.insert('countdown_days', day.toMap());
+  }
+
+  Future<int> updateCountdownDay(CountdownDay day) async {
+    final db = await DBHelper.instance.accountDatabase;
+    return await db.update(
+      'countdown_days',
+      day.toMap(),
+      where: 'id = ?',
+      whereArgs: [day.id],
+    );
+  }
+
+  Future<int> deleteCountdownDay(int id) async {
+    final db = await DBHelper.instance.accountDatabase;
+    return await db.delete(
+      'countdown_days',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<List<CountdownDay>> getCountdownDays() async {
+    final db = await DBHelper.instance.accountDatabase;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'countdown_days',
+      orderBy: 'target_date ASC',
+    );
+    return List.generate(maps.length, (i) => CountdownDay.fromMap(maps[i]));
   }
 }

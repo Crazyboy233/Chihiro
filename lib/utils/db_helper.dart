@@ -117,6 +117,9 @@ class DBHelper {
 
   int? get activeBookId => _activeBookId;
 
+  /// 当前活跃账号 ID（日程/打卡/倒数日所属账号）
+  int? get activeAccountId => _activeAccountId;
+
   /// 设置当前活跃账本，如果与当前不同则关闭旧连接
   Future<void> setActiveBook(int bookId) async {
     if (_activeBookId == bookId && _activeDatabase != null) return;
@@ -182,8 +185,9 @@ class DBHelper {
 
     _activeAccountDb = await openDatabase(
       dbPath,
-      version: 1,
+      version: 2,
       onCreate: _createAccountDB,
+      onUpgrade: _upgradeAccountDB,
     );
 
     // 首次创建账号 DB 时，尝试从旧账本 DB 迁移日程、打卡数据
@@ -266,6 +270,38 @@ class DBHelper {
         FOREIGN KEY (goal_id) REFERENCES habit_goals (id)
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE countdown_days (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        target_date TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'countdown',
+        color TEXT,
+        note TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _upgradeAccountDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      try {
+        await db.execute('''
+          CREATE TABLE countdown_days (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            target_date TEXT NOT NULL,
+            type TEXT NOT NULL DEFAULT 'countdown',
+            color TEXT,
+            note TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )
+        ''');
+      } catch (_) {}
+    }
   }
 
   // ------- 数据库访问 -------

@@ -7,6 +7,7 @@ import 'providers/category_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/schedule_provider.dart';
 import 'providers/habit_provider.dart';
+import 'providers/countdown_provider.dart';
 import 'providers/account_provider.dart';
 import 'providers/book_provider.dart';
 import 'providers/theme_provider.dart';
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => ScheduleProvider()),
         ChangeNotifierProvider(create: (_) => HabitProvider()),
+        ChangeNotifierProvider(create: (_) => CountdownProvider()),
         ChangeNotifierProvider(create: (_) => AccountProvider()),
         ChangeNotifierProvider(create: (_) => BookProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()..load()),

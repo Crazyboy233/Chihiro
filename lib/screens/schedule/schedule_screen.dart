@@ -6,8 +6,11 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../constants/colors.dart';
 import '../../models/schedule.dart';
 import '../../providers/schedule_provider.dart';
+import '../../providers/countdown_provider.dart';
 import '../../utils/holiday_service.dart';
 import 'add_schedule_screen.dart';
+import 'add_countdown_screen.dart';
+import 'countdown_screen.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -23,6 +26,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   late final DateTime _baseMonth;
   static const int _initialPage = 10000;
   int _currentPage = _initialPage;
+
+  // 顶部页签：0 = 日程（那天要干嘛），1 = 倒数日（还有多久）
+  int _topTab = 0;
 
   DateTime _monthForPage(int page) {
     final delta = page - _initialPage;
@@ -50,6 +56,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         setState(() {});
       }
       _loadData();
+      context.read<CountdownProvider>().loadCountdownDays();
     });
   }
 
@@ -151,27 +158,137 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _buildAppBar(),
-      body: Consumer<ScheduleProvider>(
-        builder: (context, scheduleProvider, child) {
-          return _buildCustomCalendar(scheduleProvider);
-        },
+      appBar: _topTab == 0 ? _buildAppBar() : _buildCountdownAppBar(),
+      body: Column(
+        children: [
+          _buildTopTabSwitcher(),
+          Expanded(
+            child: _topTab == 0
+                ? Consumer<ScheduleProvider>(
+                    builder: (context, scheduleProvider, child) {
+                      return _buildCustomCalendar(scheduleProvider);
+                    },
+                  )
+                : const CountdownView(),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_schedule',
         onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddScheduleScreen(selectedDate: _selectedDay),
-            ),
-          );
-          if (mounted) {
-            _loadData();
+          if (_topTab == 0) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddScheduleScreen(selectedDate: _selectedDay),
+              ),
+            );
+            if (mounted) {
+              _loadData();
+            }
+          } else {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AddCountdownScreen(),
+              ),
+            );
+            if (mounted) {
+              context.read<CountdownProvider>().loadCountdownDays();
+            }
           }
         },
         backgroundColor: const Color(0xFFFF9800),
         child: const Icon(Icons.add, size: 32),
+      ),
+    );
+  }
+
+  /// 顶部页签切换：日程（那天要干嘛） / 倒数日（还有多久）
+  Widget _buildTopTabSwitcher() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          _buildTopTabItem(0, Icons.calendar_month_rounded, '日程'),
+          _buildTopTabItem(1, Icons.hourglass_top_rounded, '倒数日'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopTabItem(int index, IconData icon, String label) {
+    final isActive = _topTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          if (_topTab == index) return;
+          setState(() {
+            _topTab = index;
+          });
+          if (index == 1) {
+            // 切到倒数日时刷新一次，确保跨天后数据准确
+            context.read<CountdownProvider>().loadCountdownDays();
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isActive ? Colors.white : AppColors.ts(context),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isActive ? Colors.white : AppColors.ts(context),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildCountdownAppBar() {
+    final cs = Theme.of(context).colorScheme;
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(56),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cs.surface,
+          border: Border(bottom: BorderSide(color: AppColors.ts(context), width: 0.5)),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: Text(
+              '倒数日',
+              style: TextStyle(
+                color: cs.onSurface,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -89,7 +89,7 @@ class AboutScreen extends StatelessWidget {
             icon: Icons.verified_user_outlined,
             title: '应用信息',
             children: const [
-              _BulletText(label: '版本', value: 'V2.0.0'),
+              _BulletText(label: '版本', value: 'V2.1.0'),
               _BulletText(label: '应用名', value: 'Chihiro'),
               _BulletText(label: '包名', value: 'com.chihiro'),
               _BulletText(label: '数据类型', value: '账单=账本级SQLite · 日程打卡=账号级SQLite · JSON备份'),

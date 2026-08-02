@@ -21,6 +21,16 @@ class ChangelogEntry {
 // 在这里��加新版本的更新说明
 const List<ChangelogEntry> changelog = [
   ChangelogEntry(
+    version: 'V2.1.0',
+    date: '2026-08-02',
+    newFeatures: [
+      '新增暗色模式：「我的」页面可切换浅色 / 深色模式 / 跟随系统',
+      '新增搜索功能：首页顶部可按分类名称、分类备注、备注关键字搜索账单',
+      '新增倒数日：日程页顶部「倒数日」页签，支持「倒数」（还有 N 天）和「正数」（已坚持 N 天）两种，到期当天整卡高亮，并自动预置国内法定节假日',
+      '新增打卡热力图：打卡页「热力图」视图，全年一屏总览，下方按目标拆分，含打卡天数、累计次数、连续天数统计',
+    ],
+  ),
+  ChangelogEntry(
     version: 'V2.0.0',
     date: '2026-07-26',
     newFeatures: [

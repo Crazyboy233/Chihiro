@@ -6,6 +6,7 @@ import '../../models/habit_goal.dart';
 import '../../providers/habit_provider.dart';
 import '../../utils/holiday_service.dart';
 import 'add_habit_screen.dart';
+import 'habit_heatmap_view.dart';
 
 class HabitScreen extends StatefulWidget {
   const HabitScreen({super.key});
@@ -17,6 +18,9 @@ class HabitScreen extends StatefulWidget {
 class _HabitScreenState extends State<HabitScreen> {
   DateTime? _selectedDay;
   DateTime _habitFocusedDay = DateTime.now();
+
+  // 顶部视图切换：0 = 日历，1 = 热力图
+  int _viewMode = 0;
 
   @override
   void initState() {
@@ -31,10 +35,20 @@ class _HabitScreenState extends State<HabitScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
-      body: Consumer<HabitProvider>(
-        builder: (context, habitProvider, child) {
-          return _buildHabitSection(habitProvider);
-        },
+      body: Column(
+        children: [
+          _buildViewSwitcher(),
+          Expanded(
+            child: Consumer<HabitProvider>(
+              builder: (context, habitProvider, child) {
+                if (_viewMode == 1) {
+                  return const HabitHeatmapView();
+                }
+                return _buildHabitSection(habitProvider);
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_habit',
@@ -45,9 +59,77 @@ class _HabitScreenState extends State<HabitScreen> {
             MaterialPageRoute(builder: (context) => const AddHabitScreen()),
           );
           await provider.loadGoals(viewedMonth: _habitFocusedDay);
+          // 热力图视图需要全年数据，新增目标后补齐当年记录（幂等合并）
+          if (_viewMode == 1 && mounted) {
+            final now = DateTime.now();
+            await provider.loadAllRecordsForMonth(
+              DateTime(now.year, 1, 1),
+              DateTime(now.year, 12, 31),
+            );
+          }
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add_task, size: 28),
+      ),
+    );
+  }
+
+  /// 顶部视图切换：日历 / 热力图
+  Widget _buildViewSwitcher() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          _buildViewTab(0, Icons.calendar_month_rounded, '日历'),
+          _buildViewTab(1, Icons.grid_on_rounded, '热力图'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewTab(int index, IconData icon, String label) {
+    final isActive = _viewMode == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          if (_viewMode == index) return;
+          setState(() {
+            _viewMode = index;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.secondary : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isActive ? Colors.white : AppColors.ts(context),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isActive ? Colors.white : AppColors.ts(context),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
